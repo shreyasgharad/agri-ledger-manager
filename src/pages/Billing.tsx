@@ -7,16 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Plus, Printer, Eye, Download } from "lucide-react";
-
-// Mock data for bills
-const mockBills = [
-  { id: "1", billNo: "BILL-001", farmerId: "1", farmerName: "Rajesh Kumar", date: "2025-04-21", amount: 12500, status: "Paid", items: "Rice (30 bags)" },
-  { id: "2", billNo: "BILL-002", farmerId: "2", farmerName: "Sunil Verma", date: "2025-04-18", amount: 8700, status: "Pending", items: "Wheat (25 bags)" },
-  { id: "3", billNo: "BILL-003", farmerId: "3", farmerName: "Meena Patel", date: "2025-04-15", amount: 15800, status: "Paid", items: "Cotton (15 bags)" },
-  { id: "4", billNo: "BILL-004", farmerId: "4", farmerName: "Vikram Singh", date: "2025-04-10", amount: 22500, status: "Pending", items: "Rice (40 bags)" },
-  { id: "5", billNo: "BILL-005", farmerId: "5", farmerName: "Anita Kumari", date: "2025-04-05", amount: 9300, status: "Paid", items: "Vegetables (20 bags)" },
-];
+import { Search, Plus, Printer, Eye, Download, RefreshCw } from "lucide-react";
+import { useBills } from "@/hooks/useBills";
 
 // Mock list of farmers for the dropdown
 const mockFarmersList = [
@@ -48,12 +40,13 @@ const Billing = () => {
     cessRate: "5",
   });
 
-  const filteredBills = mockBills.filter(
+  const { bills, isLoading, error, refetch, addBill, isAddingBill } = useBills();
+
+  const filteredBills = bills.filter(
     (bill) =>
-      bill.billNo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      bill.farmerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      bill.status.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      bill.items.toLowerCase().includes(searchTerm.toLowerCase())
+      bill.billId.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      bill.customer.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      bill.total.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -78,12 +71,21 @@ const Billing = () => {
   };
 
   const handleCreateBill = () => {
-    // In a real app, this would create a new bill in the database
+    const selectedFarmer = mockFarmersList.find(f => f.id === newBill.farmerId);
+    const totalAmount = calculateTotal();
+    
+    if (!selectedFarmer || totalAmount === 0) {
+      return;
+    }
+
     const billData = {
-      ...newBill,
-      totalAmount: calculateTotal(),
+      billId: `BILL-${Date.now()}`,
+      customer: selectedFarmer.name,
+      total: totalAmount.toString(),
+      date: new Date().toISOString().split('T')[0],
     };
-    console.log("Creating new bill:", billData);
+
+    addBill(billData);
     setIsCreateBillOpen(false);
     setNewBill({
       farmerId: "",
@@ -91,125 +93,138 @@ const Billing = () => {
       quantity: "",
       cessRate: "5",
     });
-    // Toast notification would appear here in a real app
   };
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold text-agri-green-700">Billing</h1>
-        <Dialog open={isCreateBillOpen} onOpenChange={setIsCreateBillOpen}>
-          <DialogTrigger asChild>
-            <Button className="bg-agri-green-500 hover:bg-agri-green-600">
-              <Plus className="h-4 w-4 mr-2" /> Create Bill
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[500px]">
-            <DialogHeader>
-              <DialogTitle>Create New Bill</DialogTitle>
-              <DialogDescription>
-                Generate a new bill for a farmer.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4 py-2">
-              <div className="space-y-2">
-                <Label htmlFor="farmerId">Farmer</Label>
-                <Select
-                  onValueChange={(value) => handleSelectChange("farmerId", value)}
-                  value={newBill.farmerId}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a farmer" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {mockFarmersList.map((farmer) => (
-                      <SelectItem key={farmer.id} value={farmer.id}>
-                        {farmer.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="productId">Product</Label>
-                <Select
-                  onValueChange={(value) => handleSelectChange("productId", value)}
-                  value={newBill.productId}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a product" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {mockProducts.map((product) => (
-                      <SelectItem key={product.id} value={product.id}>
-                        {product.name} (₹{product.pricePerBag}/bag)
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="quantity">Number of Bags</Label>
-                <Input
-                  id="quantity"
-                  name="quantity"
-                  value={newBill.quantity}
-                  onChange={handleInputChange}
-                  placeholder="Enter number of bags"
-                  type="number"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="cessRate">Cess Rate (%)</Label>
-                <Input
-                  id="cessRate"
-                  name="cessRate"
-                  value={newBill.cessRate}
-                  onChange={handleInputChange}
-                  placeholder="Enter cess rate"
-                  type="number"
-                />
-              </div>
-              <div className="pt-3 border-t">
-                <div className="flex justify-between items-center text-sm">
-                  <span>Subtotal:</span>
-                  <span>
-                    ₹{newBill.productId && newBill.quantity ? 
-                      (mockProducts.find(p => p.id === newBill.productId)?.pricePerBag || 0) * Number(newBill.quantity) 
-                      : 0}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center text-sm my-1">
-                  <span>Cess ({newBill.cessRate}%):</span>
-                  <span>
-                    ₹{newBill.productId && newBill.quantity ? 
-                      ((mockProducts.find(p => p.id === newBill.productId)?.pricePerBag || 0) * Number(newBill.quantity)) * (Number(newBill.cessRate) / 100) 
-                      : 0}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center font-semibold text-lg mt-2">
-                  <span>Total:</span>
-                  <span>₹{calculateTotal().toLocaleString()}</span>
-                </div>
-              </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsCreateBillOpen(false)}>
-                Cancel
+        <div className="flex gap-2">
+          <Button 
+            variant="outline" 
+            onClick={() => refetch()}
+            disabled={isLoading}
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+          <Dialog open={isCreateBillOpen} onOpenChange={setIsCreateBillOpen}>
+            <DialogTrigger asChild>
+              <Button className="bg-agri-green-500 hover:bg-agri-green-600">
+                <Plus className="h-4 w-4 mr-2" /> Create Bill
               </Button>
-              <Button onClick={handleCreateBill} className="bg-agri-green-500 hover:bg-agri-green-600">
-                Generate Bill
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[500px]">
+              <DialogHeader>
+                <DialogTitle>Create New Bill</DialogTitle>
+                <DialogDescription>
+                  Generate a new bill for a farmer.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-2">
+                <div className="space-y-2">
+                  <Label htmlFor="farmerId">Farmer</Label>
+                  <Select
+                    onValueChange={(value) => handleSelectChange("farmerId", value)}
+                    value={newBill.farmerId}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a farmer" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {mockFarmersList.map((farmer) => (
+                        <SelectItem key={farmer.id} value={farmer.id}>
+                          {farmer.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="productId">Product</Label>
+                  <Select
+                    onValueChange={(value) => handleSelectChange("productId", value)}
+                    value={newBill.productId}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a product" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {mockProducts.map((product) => (
+                        <SelectItem key={product.id} value={product.id}>
+                          {product.name} (₹{product.pricePerBag}/bag)
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="quantity">Number of Bags</Label>
+                  <Input
+                    id="quantity"
+                    name="quantity"
+                    value={newBill.quantity}
+                    onChange={handleInputChange}
+                    placeholder="Enter number of bags"
+                    type="number"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="cessRate">Cess Rate (%)</Label>
+                  <Input
+                    id="cessRate"
+                    name="cessRate"
+                    value={newBill.cessRate}
+                    onChange={handleInputChange}
+                    placeholder="Enter cess rate"
+                    type="number"
+                  />
+                </div>
+                <div className="pt-3 border-t">
+                  <div className="flex justify-between items-center text-sm">
+                    <span>Subtotal:</span>
+                    <span>
+                      ₹{newBill.productId && newBill.quantity ? 
+                        (mockProducts.find(p => p.id === newBill.productId)?.pricePerBag || 0) * Number(newBill.quantity) 
+                        : 0}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center text-sm my-1">
+                    <span>Cess ({newBill.cessRate}%):</span>
+                    <span>
+                      ₹{newBill.productId && newBill.quantity ? 
+                        ((mockProducts.find(p => p.id === newBill.productId)?.pricePerBag || 0) * Number(newBill.quantity)) * (Number(newBill.cessRate) / 100) 
+                        : 0}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center font-semibold text-lg mt-2">
+                    <span>Total:</span>
+                    <span>₹{calculateTotal().toLocaleString()}</span>
+                  </div>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setIsCreateBillOpen(false)}>
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={handleCreateBill} 
+                  className="bg-agri-green-500 hover:bg-agri-green-600"
+                  disabled={isAddingBill}
+                >
+                  {isAddingBill ? "Generating..." : "Generate Bill"}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       <Card>
         <CardHeader>
           <CardTitle>Bill Records</CardTitle>
           <CardDescription>
-            View and manage all billing records. Print or download bills as needed.
+            View and manage all billing records from Google Sheets. Print or download bills as needed.
           </CardDescription>
           <div className="relative my-2">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -222,60 +237,58 @@ const Billing = () => {
           </div>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Bill No.</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead>Farmer</TableHead>
-                <TableHead>Items</TableHead>
-                <TableHead>Amount</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="w-[150px]">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredBills.length > 0 ? (
-                filteredBills.map((bill) => (
-                  <TableRow key={bill.id}>
-                    <TableCell className="font-medium">{bill.billNo}</TableCell>
-                    <TableCell>{bill.date}</TableCell>
-                    <TableCell>{bill.farmerName}</TableCell>
-                    <TableCell>{bill.items}</TableCell>
-                    <TableCell>₹{bill.amount.toLocaleString()}</TableCell>
-                    <TableCell>
-                      <div className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-                        bill.status === "Paid"
-                          ? "bg-green-100 text-green-800"
-                          : "bg-amber-100 text-amber-800"
-                      }`}>
-                        {bill.status}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Button variant="ghost" size="sm" className="h-8 w-8" title="Print Bill">
-                          <Printer className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="sm" className="h-8 w-8" title="View Bill">
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="sm" className="h-8 w-8" title="Download Bill">
-                          <Download className="h-4 w-4" />
-                        </Button>
-                      </div>
+          {error && (
+            <div className="text-red-600 mb-4 p-3 bg-red-50 rounded-lg">
+              Error loading bills: {error.message}
+            </div>
+          )}
+          
+          {isLoading ? (
+            <div className="text-center py-6">Loading bills from Google Sheets...</div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Bill ID</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Customer</TableHead>
+                  <TableHead>Total Amount</TableHead>
+                  <TableHead className="w-[150px]">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredBills.length > 0 ? (
+                  filteredBills.map((bill, index) => (
+                    <TableRow key={`${bill.billId}-${index}`}>
+                      <TableCell className="font-medium">{bill.billId}</TableCell>
+                      <TableCell>{bill.date}</TableCell>
+                      <TableCell>{bill.customer}</TableCell>
+                      <TableCell>₹{bill.total}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Button variant="ghost" size="sm" className="h-8 w-8" title="Print Bill">
+                            <Printer className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="sm" className="h-8 w-8" title="View Bill">
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="sm" className="h-8 w-8" title="Download Bill">
+                            <Download className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center py-6 text-muted-foreground">
+                      {isLoading ? "Loading..." : "No bills found matching your search."}
                     </TableCell>
                   </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={7} className="text-center py-6 text-muted-foreground">
-                    No bills found matching your search.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
+                )}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
 
