@@ -95,6 +95,15 @@ const Billing = () => {
     });
   };
 
+  // Calculate summary data from the actual bills
+  const totalBills = bills.length;
+  const totalAmount = bills.reduce((acc, bill) => acc + parseFloat(bill.total || "0"), 0);
+  
+  // For now, we'll treat all bills as paid since we don't have status in the Google Sheets data
+  // You can modify the Google Sheets structure to include a status column if needed
+  const paidAmount = totalAmount; // Assuming all are paid for now
+  const pendingAmount = 0; // No pending since we don't have status
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -304,24 +313,24 @@ const Billing = () => {
             <div className="space-y-4">
               <div className="flex justify-between items-center pb-2 border-b">
                 <span className="text-muted-foreground">Total Bills</span>
-                <span className="font-semibold">{mockBills.length}</span>
+                <span className="font-semibold">{totalBills}</span>
               </div>
               <div className="flex justify-between items-center pb-2 border-b">
                 <span className="text-muted-foreground">Total Amount</span>
                 <span className="font-semibold">
-                  ₹{mockBills.reduce((acc, bill) => acc + bill.amount, 0).toLocaleString()}
+                  ₹{totalAmount.toLocaleString()}
                 </span>
               </div>
               <div className="flex justify-between items-center pb-2 border-b">
                 <span className="text-muted-foreground">Paid Amount</span>
                 <span className="font-semibold text-green-600">
-                  ₹{mockBills.filter(b => b.status === "Paid").reduce((acc, bill) => acc + bill.amount, 0).toLocaleString()}
+                  ₹{paidAmount.toLocaleString()}
                 </span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-muted-foreground">Pending Amount</span>
                 <span className="font-semibold text-red-600">
-                  ₹{mockBills.filter(b => b.status === "Pending").reduce((acc, bill) => acc + bill.amount, 0).toLocaleString()}
+                  ₹{pendingAmount.toLocaleString()}
                 </span>
               </div>
             </div>
