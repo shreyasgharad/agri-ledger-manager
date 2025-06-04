@@ -44,9 +44,9 @@ const Billing = () => {
 
   const filteredBills = bills.filter(
     (bill) =>
-      bill.billId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      bill.customer.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      bill.total.toLowerCase().includes(searchTerm.toLowerCase())
+      String(bill.billId || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      String(bill.customer || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      String(bill.total || "").toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
