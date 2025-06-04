@@ -22,13 +22,13 @@ export const googleSheetsApi = {
       
       const data = await response.json();
       
-      // Assuming the first row contains headers, skip it
+      // Assuming the first row contains headers: ["Bill ID","Date","Customer","Total Amount"]
       if (data.length > 1) {
         return data.slice(1).map((row: string[]) => ({
           billId: row[0] || "",
-          customer: row[1] || "",
-          total: row[2] || "",
-          date: row[3] || "",
+          date: row[1] || "",
+          customer: row[2] || "",
+          total: row[3] || "",
         }));
       }
       
