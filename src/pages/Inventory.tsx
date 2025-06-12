@@ -9,28 +9,9 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
 import { Plus, Search, Package, ArrowRight } from "lucide-react";
+import { useInventory } from "@/hooks/useInventory";
+import { useFarmers } from "@/hooks/useFarmers";
 
-// Mock data for demonstration
-const mockInventory = [
-  { id: "1", farmerId: "1", farmerName: "Rajesh Kumar", product: "Rice", givenBags: 30, returnedBags: 12, status: "Active" },
-  { id: "2", farmerId: "2", farmerName: "Sunil Verma", product: "Wheat", givenBags: 25, returnedBags: 25, status: "Completed" },
-  { id: "3", farmerId: "3", farmerName: "Meena Patel", product: "Cotton", givenBags: 15, returnedBags: 5, status: "Active" },
-  { id: "4", farmerId: "4", farmerName: "Vikram Singh", product: "Rice", givenBags: 40, returnedBags: 15, status: "Active" },
-  { id: "5", farmerId: "5", farmerName: "Anita Kumari", product: "Vegetables", givenBags: 20, returnedBags: 0, status: "Active" },
-  { id: "6", farmerId: "6", farmerName: "Dinesh Yadav", product: "Pulses", givenBags: 10, returnedBags: 10, status: "Completed" },
-];
-
-// Mock list of farmers for the dropdown
-const mockFarmersList = [
-  { id: "1", name: "Rajesh Kumar" },
-  { id: "2", name: "Sunil Verma" },
-  { id: "3", name: "Meena Patel" },
-  { id: "4", name: "Vikram Singh" },
-  { id: "5", name: "Anita Kumari" },
-  { id: "6", name: "Dinesh Yadav" },
-];
-
-// Mock list of products
 const mockProducts = ["Rice", "Wheat", "Cotton", "Vegetables", "Pulses", "Sugarcane"];
 
 const Inventory = () => {
@@ -39,19 +20,22 @@ const Inventory = () => {
   const [isUpdateDialogOpen, setIsUpdateDialogOpen] = useState(false);
   const [selectedInventory, setSelectedInventory] = useState<string | null>(null);
   const [newInventory, setNewInventory] = useState({
-    farmerId: "",
+    farmer_id: "",
     product: "",
-    givenBags: "",
+    given_bags: "",
   });
   const [bagReturn, setBagReturn] = useState({
-    returnedBags: "",
+    returned_bags: "",
   });
 
-  const filteredInventory = mockInventory.filter(
-    (inventory) =>
-      inventory.farmerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      inventory.product.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      inventory.status.toLowerCase().includes(searchTerm.toLowerCase())
+  const { inventory, isLoading, addInventory, updateInventory, isAddingInventory, isUpdatingInventory } = useInventory();
+  const { farmers } = useFarmers();
+
+  const filteredInventory = inventory.filter(
+    (item) =>
+      (item.farmers?.name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.product.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.status.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -69,32 +53,56 @@ const Inventory = () => {
   };
 
   const handleAddInventory = () => {
-    // In a real app, this would add the inventory record to the database
-    console.log("Adding new inventory:", newInventory);
+    if (!newInventory.farmer_id || !newInventory.product || !newInventory.given_bags) {
+      return;
+    }
+
+    addInventory({
+      farmer_id: newInventory.farmer_id,
+      product: newInventory.product,
+      given_bags: parseInt(newInventory.given_bags),
+    });
+
     setIsAddDialogOpen(false);
     setNewInventory({
-      farmerId: "",
+      farmer_id: "",
       product: "",
-      givenBags: "",
+      given_bags: "",
     });
-    // Toast notification would appear here in a real app
   };
 
   const handleUpdateInventory = () => {
-    // In a real app, this would update the inventory record in the database
-    console.log("Updating inventory ID:", selectedInventory, "with:", bagReturn);
+    if (!selectedInventory || !bagReturn.returned_bags) {
+      return;
+    }
+
+    const selectedItem = inventory.find(item => item.id === selectedInventory);
+    if (!selectedItem) return;
+
+    const newReturnedBags = parseInt(bagReturn.returned_bags);
+    const newStatus = newReturnedBags >= selectedItem.given_bags ? "Completed" : "Active";
+
+    updateInventory({
+      id: selectedInventory,
+      returned_bags: newReturnedBags,
+      status: newStatus,
+    });
+
     setIsUpdateDialogOpen(false);
     setBagReturn({
-      returnedBags: "",
+      returned_bags: "",
     });
     setSelectedInventory(null);
-    // Toast notification would appear here in a real app
   };
 
   const openUpdateDialog = (inventoryId: string) => {
     setSelectedInventory(inventoryId);
     setIsUpdateDialogOpen(true);
   };
+
+  if (isLoading) {
+    return <div className="p-6">Loading inventory...</div>;
+  }
 
   return (
     <div className="space-y-6">
@@ -115,16 +123,16 @@ const Inventory = () => {
             </DialogHeader>
             <div className="space-y-4 py-2">
               <div className="space-y-2">
-                <Label htmlFor="farmerId">Farmer</Label>
+                <Label htmlFor="farmer_id">Farmer</Label>
                 <Select
-                  onValueChange={(value) => handleSelectChange("farmerId", value)}
-                  value={newInventory.farmerId}
+                  onValueChange={(value) => handleSelectChange("farmer_id", value)}
+                  value={newInventory.farmer_id}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select a farmer" />
                   </SelectTrigger>
                   <SelectContent>
-                    {mockFarmersList.map((farmer) => (
+                    {farmers.map((farmer) => (
                       <SelectItem key={farmer.id} value={farmer.id}>
                         {farmer.name}
                       </SelectItem>
@@ -151,11 +159,11 @@ const Inventory = () => {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="givenBags">Number of Bags</Label>
+                <Label htmlFor="given_bags">Number of Bags</Label>
                 <Input
-                  id="givenBags"
-                  name="givenBags"
-                  value={newInventory.givenBags}
+                  id="given_bags"
+                  name="given_bags"
+                  value={newInventory.given_bags}
                   onChange={handleInputChange}
                   placeholder="Enter number of bags"
                   type="number"
@@ -166,8 +174,12 @@ const Inventory = () => {
               <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
                 Cancel
               </Button>
-              <Button onClick={handleAddInventory} className="bg-agri-green-500 hover:bg-agri-green-600">
-                Add Record
+              <Button 
+                onClick={handleAddInventory} 
+                disabled={isAddingInventory}
+                className="bg-agri-green-500 hover:bg-agri-green-600"
+              >
+                {isAddingInventory ? "Adding..." : "Add Record"}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -185,11 +197,11 @@ const Inventory = () => {
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-2">
-              <Label htmlFor="returnedBags">Number of Bags Returned</Label>
+              <Label htmlFor="returned_bags">Number of Bags Returned</Label>
               <Input
-                id="returnedBags"
-                name="returnedBags"
-                value={bagReturn.returnedBags}
+                id="returned_bags"
+                name="returned_bags"
+                value={bagReturn.returned_bags}
                 onChange={handleReturnInputChange}
                 placeholder="Enter number of bags"
                 type="number"
@@ -200,8 +212,12 @@ const Inventory = () => {
             <Button variant="outline" onClick={() => setIsUpdateDialogOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleUpdateInventory} className="bg-agri-green-500 hover:bg-agri-green-600">
-              Update
+            <Button 
+              onClick={handleUpdateInventory} 
+              disabled={isUpdatingInventory}
+              className="bg-agri-green-500 hover:bg-agri-green-600"
+            >
+              {isUpdatingInventory ? "Updating..." : "Update"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -239,30 +255,30 @@ const Inventory = () => {
             </TableHeader>
             <TableBody>
               {filteredInventory.length > 0 ? (
-                filteredInventory.map((inventory) => (
-                  <TableRow key={inventory.id}>
-                    <TableCell className="font-medium">{inventory.farmerName}</TableCell>
-                    <TableCell>{inventory.product}</TableCell>
-                    <TableCell>{inventory.givenBags}</TableCell>
-                    <TableCell>{inventory.returnedBags}</TableCell>
-                    <TableCell>{inventory.givenBags - inventory.returnedBags}</TableCell>
+                filteredInventory.map((item) => (
+                  <TableRow key={item.id}>
+                    <TableCell className="font-medium">{item.farmers?.name}</TableCell>
+                    <TableCell>{item.product}</TableCell>
+                    <TableCell>{item.given_bags}</TableCell>
+                    <TableCell>{item.returned_bags}</TableCell>
+                    <TableCell>{item.given_bags - item.returned_bags}</TableCell>
                     <TableCell>
                       <div className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-                        inventory.status === "Completed"
+                        item.status === "Completed"
                           ? "bg-green-100 text-green-800"
                           : "bg-blue-100 text-blue-800"
                       }`}>
-                        {inventory.status}
+                        {item.status}
                       </div>
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <Progress 
-                          value={(inventory.returnedBags / inventory.givenBags) * 100} 
+                          value={(item.returned_bags / item.given_bags) * 100} 
                           className="h-2" 
                         />
                         <span className="text-xs text-muted-foreground">
-                          {Math.round((inventory.returnedBags / inventory.givenBags) * 100)}%
+                          {Math.round((item.returned_bags / item.given_bags) * 100)}%
                         </span>
                       </div>
                     </TableCell>
@@ -270,9 +286,9 @@ const Inventory = () => {
                       <Button 
                         variant="ghost" 
                         size="sm" 
-                        className={`${inventory.status === "Completed" ? "opacity-50 cursor-not-allowed" : ""}`}
-                        disabled={inventory.status === "Completed"}
-                        onClick={() => openUpdateDialog(inventory.id)}
+                        className={`${item.status === "Completed" ? "opacity-50 cursor-not-allowed" : ""}`}
+                        disabled={item.status === "Completed"}
+                        onClick={() => openUpdateDialog(item.id)}
                       >
                         <Package className="h-4 w-4 mr-1" /> Update
                       </Button>
@@ -305,7 +321,7 @@ const Inventory = () => {
               <div className="flex items-center gap-2">
                 <Package className="h-5 w-5 text-agri-green-500" />
                 <span className="text-2xl font-bold">
-                  {mockInventory.reduce((acc, curr) => acc + curr.givenBags, 0)}
+                  {inventory.reduce((acc, curr) => acc + curr.given_bags, 0)}
                 </span>
               </div>
             </div>
@@ -315,7 +331,7 @@ const Inventory = () => {
               <div className="flex items-center gap-2">
                 <ArrowRight className="h-5 w-5 text-agri-brown-500" />
                 <span className="text-2xl font-bold">
-                  {mockInventory.reduce((acc, curr) => acc + curr.returnedBags, 0)}
+                  {inventory.reduce((acc, curr) => acc + curr.returned_bags, 0)}
                 </span>
               </div>
             </div>
@@ -325,7 +341,7 @@ const Inventory = () => {
               <div className="flex items-center gap-2">
                 <Package className="h-5 w-5 text-red-500" />
                 <span className="text-2xl font-bold">
-                  {mockInventory.reduce((acc, curr) => acc + (curr.givenBags - curr.returnedBags), 0)}
+                  {inventory.reduce((acc, curr) => acc + (curr.given_bags - curr.returned_bags), 0)}
                 </span>
               </div>
             </div>

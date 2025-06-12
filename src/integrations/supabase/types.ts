@@ -9,7 +9,118 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      farmers: {
+        Row: {
+          address: string
+          balance: number | null
+          created_at: string
+          id: string
+          items: string
+          name: string
+          phone: string
+          updated_at: string
+        }
+        Insert: {
+          address: string
+          balance?: number | null
+          created_at?: string
+          id?: string
+          items: string
+          name: string
+          phone: string
+          updated_at?: string
+        }
+        Update: {
+          address?: string
+          balance?: number | null
+          created_at?: string
+          id?: string
+          items?: string
+          name?: string
+          phone?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      inventory: {
+        Row: {
+          created_at: string
+          farmer_id: string
+          given_bags: number
+          id: string
+          product: string
+          returned_bags: number
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          farmer_id: string
+          given_bags?: number
+          id?: string
+          product: string
+          returned_bags?: number
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          farmer_id?: string
+          given_bags?: number
+          id?: string
+          product?: string
+          returned_bags?: number
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_farmer_id_fkey"
+            columns: ["farmer_id"]
+            isOneToOne: false
+            referencedRelation: "farmers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      transactions: {
+        Row: {
+          amount: number
+          created_at: string
+          date: string
+          farmer_id: string
+          id: string
+          notes: string | null
+          type: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          date?: string
+          farmer_id: string
+          id?: string
+          notes?: string | null
+          type: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          date?: string
+          farmer_id?: string
+          id?: string
+          notes?: string | null
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transactions_farmer_id_fkey"
+            columns: ["farmer_id"]
+            isOneToOne: false
+            referencedRelation: "farmers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

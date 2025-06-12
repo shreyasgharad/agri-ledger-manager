@@ -7,16 +7,7 @@ import { Plus, Search, Edit, Trash } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-
-// Mock data for demonstration
-const mockFarmers = [
-  { id: "1", name: "Rajesh Kumar", phone: "9876543210", address: "Village Sundarpur, Dist. Patna", items: "Rice, Wheat", balance: 12500 },
-  { id: "2", name: "Sunil Verma", phone: "8765432109", address: "Village Chandpur, Dist. Varanasi", items: "Wheat, Pulse", balance: 8700 },
-  { id: "3", name: "Meena Patel", phone: "7654321098", address: "Village Ramgarh, Dist. Lucknow", items: "Cotton, Rice", balance: -5200 },
-  { id: "4", name: "Vikram Singh", phone: "9765432108", address: "Village Devpur, Dist. Allahabad", items: "Sugarcane, Wheat", balance: 15600 },
-  { id: "5", name: "Anita Kumari", phone: "8654321097", address: "Village Mohanpur, Dist. Kanpur", items: "Rice, Vegetables", balance: 0 },
-  { id: "6", name: "Dinesh Yadav", phone: "7543210986", address: "Village Laxmipur, Dist. Bhopal", items: "Wheat, Pulses", balance: 7800 },
-];
+import { useFarmers } from "@/hooks/useFarmers";
 
 const Farmers = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -28,7 +19,9 @@ const Farmers = () => {
     items: "",
   });
 
-  const filteredFarmers = mockFarmers.filter(
+  const { farmers, isLoading, addFarmer, deleteFarmer, isAddingFarmer } = useFarmers();
+
+  const filteredFarmers = farmers.filter(
     (farmer) =>
       farmer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       farmer.phone.includes(searchTerm) ||
@@ -41,8 +34,11 @@ const Farmers = () => {
   };
 
   const handleAddFarmer = () => {
-    // In a real app, this would add the farmer to the database
-    console.log("Adding new farmer:", newFarmer);
+    if (!newFarmer.name || !newFarmer.phone || !newFarmer.address || !newFarmer.items) {
+      return;
+    }
+    
+    addFarmer(newFarmer);
     setIsAddDialogOpen(false);
     setNewFarmer({
       name: "",
@@ -50,8 +46,17 @@ const Farmers = () => {
       address: "",
       items: "",
     });
-    // Toast notification would appear here in a real app
   };
+
+  const handleDeleteFarmer = (id: string) => {
+    if (confirm("Are you sure you want to delete this farmer?")) {
+      deleteFarmer(id);
+    }
+  };
+
+  if (isLoading) {
+    return <div className="p-6">Loading farmers...</div>;
+  }
 
   return (
     <div className="space-y-6">
@@ -116,8 +121,12 @@ const Farmers = () => {
               <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
                 Cancel
               </Button>
-              <Button onClick={handleAddFarmer} className="bg-agri-green-500 hover:bg-agri-green-600">
-                Add Farmer
+              <Button 
+                onClick={handleAddFarmer} 
+                disabled={isAddingFarmer}
+                className="bg-agri-green-500 hover:bg-agri-green-600"
+              >
+                {isAddingFarmer ? "Adding..." : "Add Farmer"}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -174,7 +183,12 @@ const Farmers = () => {
                         <Button variant="ghost" size="icon" className="h-8 w-8">
                           <Edit className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500">
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-8 w-8 text-red-500"
+                          onClick={() => handleDeleteFarmer(farmer.id)}
+                        >
                           <Trash className="h-4 w-4" />
                         </Button>
                       </div>

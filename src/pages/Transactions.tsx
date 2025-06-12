@@ -9,44 +9,30 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, Search, Receipt, FileText, ArrowDown, ArrowUp } from "lucide-react";
-
-// Mock data for demonstration
-const mockTransactions = [
-  { id: "1", farmerId: "1", farmerName: "Rajesh Kumar", type: "Given", amount: 5000, date: "2025-04-21", notes: "Advance payment" },
-  { id: "2", farmerId: "2", farmerName: "Sunil Verma", type: "Received", amount: 7500, date: "2025-04-20", notes: "For wheat delivery" },
-  { id: "3", farmerId: "3", farmerName: "Meena Patel", type: "Given", amount: 2500, date: "2025-04-18", notes: "Loan" },
-  { id: "4", farmerId: "4", farmerName: "Vikram Singh", type: "Received", amount: 8000, date: "2025-04-15", notes: "For rice delivery" },
-  { id: "5", farmerId: "5", farmerName: "Anita Kumari", type: "Given", amount: 1500, date: "2025-04-10", notes: "Seedling advance" },
-  { id: "6", farmerId: "6", farmerName: "Dinesh Yadav", type: "Received", amount: 4500, date: "2025-04-05", notes: "For vegetable delivery" },
-  { id: "7", farmerId: "1", farmerName: "Rajesh Kumar", type: "Received", amount: 3500, date: "2025-04-01", notes: "Partial payment" },
-];
-
-// Mock list of farmers for the dropdown
-const mockFarmersList = [
-  { id: "1", name: "Rajesh Kumar" },
-  { id: "2", name: "Sunil Verma" },
-  { id: "3", name: "Meena Patel" },
-  { id: "4", name: "Vikram Singh" },
-  { id: "5", name: "Anita Kumari" },
-  { id: "6", name: "Dinesh Yadav" },
-];
+import { useTransactions } from "@/hooks/useTransactions";
+import { useFarmers } from "@/hooks/useFarmers";
 
 const Transactions = () => {
   const [activeTab, setActiveTab] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [newTransaction, setNewTransaction] = useState({
-    farmerId: "",
-    type: "",
+    farmer_id: "",
+    type: "" as "Given" | "Received" | "",
     amount: "",
     notes: "",
+    date: new Date().toISOString().split('T')[0],
   });
 
-  const filteredTransactions = mockTransactions
+  const { transactions, isLoading, addTransaction, isAddingTransaction } = useTransactions();
+  const { farmers } = useFarmers();
+
+  const filteredTransactions = transactions
     .filter((transaction) => {
+      const farmerName = transaction.farmers?.name || "";
       const matchesSearch =
-        transaction.farmerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        transaction.notes.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        farmerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (transaction.notes && transaction.notes.toLowerCase().includes(searchTerm.toLowerCase())) ||
         transaction.amount.toString().includes(searchTerm);
       
       if (activeTab === "given") {
@@ -57,7 +43,7 @@ const Transactions = () => {
         return matchesSearch;
       }
     })
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -69,17 +55,31 @@ const Transactions = () => {
   };
 
   const handleAddTransaction = () => {
-    // In a real app, this would add the transaction to the database
-    console.log("Adding new transaction:", newTransaction);
+    if (!newTransaction.farmer_id || !newTransaction.type || !newTransaction.amount) {
+      return;
+    }
+
+    addTransaction({
+      farmer_id: newTransaction.farmer_id,
+      type: newTransaction.type as "Given" | "Received",
+      amount: parseFloat(newTransaction.amount),
+      notes: newTransaction.notes || null,
+      date: newTransaction.date,
+    });
+
     setIsAddDialogOpen(false);
     setNewTransaction({
-      farmerId: "",
+      farmer_id: "",
       type: "",
       amount: "",
       notes: "",
+      date: new Date().toISOString().split('T')[0],
     });
-    // Toast notification would appear here in a real app
   };
+
+  if (isLoading) {
+    return <div className="p-6">Loading transactions...</div>;
+  }
 
   return (
     <div className="space-y-6">
@@ -100,16 +100,16 @@ const Transactions = () => {
             </DialogHeader>
             <div className="space-y-4 py-2">
               <div className="space-y-2">
-                <Label htmlFor="farmerId">Farmer</Label>
+                <Label htmlFor="farmer_id">Farmer</Label>
                 <Select
-                  onValueChange={(value) => handleSelectChange("farmerId", value)}
-                  value={newTransaction.farmerId}
+                  onValueChange={(value) => handleSelectChange("farmer_id", value)}
+                  value={newTransaction.farmer_id}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select a farmer" />
                   </SelectTrigger>
                   <SelectContent>
-                    {mockFarmersList.map((farmer) => (
+                    {farmers.map((farmer) => (
                       <SelectItem key={farmer.id} value={farmer.id}>
                         {farmer.name}
                       </SelectItem>
@@ -144,6 +144,16 @@ const Transactions = () => {
                 />
               </div>
               <div className="space-y-2">
+                <Label htmlFor="date">Date</Label>
+                <Input
+                  id="date"
+                  name="date"
+                  value={newTransaction.date}
+                  onChange={handleInputChange}
+                  type="date"
+                />
+              </div>
+              <div className="space-y-2">
                 <Label htmlFor="notes">Notes</Label>
                 <Input
                   id="notes"
@@ -158,8 +168,12 @@ const Transactions = () => {
               <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
                 Cancel
               </Button>
-              <Button onClick={handleAddTransaction} className="bg-agri-green-500 hover:bg-agri-green-600">
-                Record Transaction
+              <Button 
+                onClick={handleAddTransaction} 
+                disabled={isAddingTransaction}
+                className="bg-agri-green-500 hover:bg-agri-green-600"
+              >
+                {isAddingTransaction ? "Recording..." : "Record Transaction"}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -211,8 +225,8 @@ const Transactions = () => {
               {filteredTransactions.length > 0 ? (
                 filteredTransactions.map((transaction) => (
                   <TableRow key={transaction.id}>
-                    <TableCell>{transaction.date}</TableCell>
-                    <TableCell className="font-medium">{transaction.farmerName}</TableCell>
+                    <TableCell>{new Date(transaction.date).toLocaleDateString()}</TableCell>
+                    <TableCell className="font-medium">{transaction.farmers?.name}</TableCell>
                     <TableCell>
                       <div className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${
                         transaction.type === "Given"
