@@ -12,7 +12,7 @@ jest.mock('lucide-react', () => ({
 
 describe('StatsCard', () => {
   it('renders basic stats card correctly', () => {
-    const { getByText, getByTestId } = render(
+    const { getByText } = render(
       <StatsCard
         title="Total Users"
         value={100}
@@ -21,9 +21,9 @@ describe('StatsCard', () => {
       />
     );
 
-    expect(getByText('Total Users')).toBeInTheDocument();
-    expect(getByText('100')).toBeInTheDocument();
-    expect(getByText('Active users')).toBeInTheDocument();
+    expect(getByText('Total Users')).toBeDefined();
+    expect(getByText('100')).toBeDefined();
+    expect(getByText('Active users')).toBeDefined();
   });
 
   it('renders trend information when provided', () => {
@@ -36,6 +36,6 @@ describe('StatsCard', () => {
       />
     );
 
-    expect(getByText('+10%')).toBeInTheDocument();
+    expect(getByText('+10%')).toBeDefined();
   });
 });

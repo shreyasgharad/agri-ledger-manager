@@ -1,7 +1,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { useRealtimeSubscription } from './useRealtimeSubscription';
+import { useEffect, useRef } from 'react';
 
 export interface DashboardStats {
   totalFarmers: number;
@@ -11,6 +11,8 @@ export interface DashboardStats {
 }
 
 export const useDashboardStats = () => {
+  const channelRef = useRef<any>(null);
+
   const { data: stats, isLoading, refetch } = useQuery({
     queryKey: ['dashboard-stats'],
     queryFn: async (): Promise<DashboardStats> => {
@@ -50,10 +52,64 @@ export const useDashboardStats = () => {
     },
   });
 
-  // Subscribe to realtime updates
-  useRealtimeSubscription({ table: 'farmers', onUpdate: refetch });
-  useRealtimeSubscription({ table: 'transactions', onUpdate: refetch });
-  useRealtimeSubscription({ table: 'inventory', onUpdate: refetch });
+  // Single realtime subscription for all tables
+  useEffect(() => {
+    // Clean up existing channel if it exists
+    if (channelRef.current) {
+      supabase.removeChannel(channelRef.current);
+      channelRef.current = null;
+    }
+
+    // Create a single channel for all dashboard updates
+    const channel = supabase
+      .channel(`dashboard-updates-${Date.now()}`)
+      .on(
+        'postgres_changes' as any,
+        {
+          event: '*',
+          schema: 'public',
+          table: 'farmers',
+        },
+        (payload) => {
+          console.log('Farmers table update:', payload);
+          refetch();
+        }
+      )
+      .on(
+        'postgres_changes' as any,
+        {
+          event: '*',
+          schema: 'public',
+          table: 'transactions',
+        },
+        (payload) => {
+          console.log('Transactions table update:', payload);
+          refetch();
+        }
+      )
+      .on(
+        'postgres_changes' as any,
+        {
+          event: '*',
+          schema: 'public',
+          table: 'inventory',
+        },
+        (payload) => {
+          console.log('Inventory table update:', payload);
+          refetch();
+        }
+      )
+      .subscribe();
+
+    channelRef.current = channel;
+
+    return () => {
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
+    };
+  }, []); // Empty dependency array since we only want to set up the subscription once
 
   return { stats, isLoading, refetch };
 };
