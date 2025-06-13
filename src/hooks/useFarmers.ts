@@ -20,7 +20,10 @@ export interface Farmer {
 export const useFarmers = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const { profile } = useAuth();
+  const { profile, user } = useAuth();
+
+  console.log('useFarmers - profile:', profile);
+  console.log('useFarmers - user:', user);
 
   const {
     data: farmers = [],
@@ -28,39 +31,75 @@ export const useFarmers = () => {
     error,
     refetch,
   } = useQuery({
-    queryKey: ["farmers"],
+    queryKey: ["farmers", profile?.org_id],
     queryFn: async () => {
+      console.log('Fetching farmers for org_id:', profile?.org_id);
+      
+      if (!profile?.org_id) {
+        console.log('No org_id found, returning empty array');
+        return [];
+      }
+
       const { data, error } = await supabase
         .from("farmers")
         .select("*")
+        .eq("org_id", profile.org_id)
         .order("created_at", { ascending: false });
       
-      if (error) throw error;
+      console.log('Farmers query result:', { data, error });
+      
+      if (error) {
+        console.error('Error fetching farmers:', error);
+        throw error;
+      }
       return data as Farmer[];
     },
-    enabled: !!profile?.org_id,
+    enabled: !!profile?.org_id && !!user,
   });
 
   // Subscribe to real-time updates
-  useRealtimeSubscription({ table: 'farmers', onUpdate: refetch });
+  useRealtimeSubscription({ 
+    table: 'farmers', 
+    onUpdate: () => {
+      console.log('Farmers table updated, refetching...');
+      refetch();
+    }
+  });
 
   const addFarmerMutation = useMutation({
     mutationFn: async (farmer: Omit<Farmer, "id" | "created_at" | "updated_at" | "balance" | "org_id">) => {
-      if (!profile?.org_id) throw new Error("Organization ID not found");
+      console.log('Adding farmer with profile:', profile);
+      
+      if (!profile?.org_id) {
+        const error = new Error("Organization ID not found. Please ensure you're properly logged in and have an organization assigned.");
+        console.error('Add farmer error:', error);
+        throw error;
+      }
+      
+      const farmerData = { 
+        ...farmer,
+        org_id: profile.org_id,
+        balance: 0
+      };
+
+      console.log('Inserting farmer data:', farmerData);
       
       const { data, error } = await supabase
         .from("farmers")
-        .insert([{ 
-          ...farmer,
-          org_id: profile.org_id
-        }])
+        .insert([farmerData])
         .select()
         .single();
       
-      if (error) throw error;
+      console.log('Insert result:', { data, error });
+      
+      if (error) {
+        console.error('Database error:', error);
+        throw error;
+      }
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log('Farmer added successfully:', data);
       queryClient.invalidateQueries({ queryKey: ["farmers"] });
       toast({
         title: "Success",
@@ -68,6 +107,7 @@ export const useFarmers = () => {
       });
     },
     onError: (error) => {
+      console.error('Add farmer mutation error:', error);
       toast({
         title: "Error",
         description: `Failed to add farmer: ${error.message}`,
@@ -78,17 +118,26 @@ export const useFarmers = () => {
 
   const updateFarmerMutation = useMutation({
     mutationFn: async ({ id, ...updates }: Partial<Farmer> & { id: string }) => {
+      console.log('Updating farmer:', id, updates);
+      
       const { data, error } = await supabase
         .from("farmers")
         .update(updates)
         .eq("id", id)
+        .eq("org_id", profile?.org_id) // Ensure user can only update farmers in their org
         .select()
         .single();
       
-      if (error) throw error;
+      console.log('Update result:', { data, error });
+      
+      if (error) {
+        console.error('Update error:', error);
+        throw error;
+      }
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log('Farmer updated successfully:', data);
       queryClient.invalidateQueries({ queryKey: ["farmers"] });
       toast({
         title: "Success",
@@ -96,6 +145,7 @@ export const useFarmers = () => {
       });
     },
     onError: (error) => {
+      console.error('Update farmer error:', error);
       toast({
         title: "Error",
         description: `Failed to update farmer: ${error.message}`,
@@ -106,14 +156,23 @@ export const useFarmers = () => {
 
   const deleteFarmerMutation = useMutation({
     mutationFn: async (id: string) => {
+      console.log('Deleting farmer:', id);
+      
       const { error } = await supabase
         .from("farmers")
         .delete()
-        .eq("id", id);
+        .eq("id", id)
+        .eq("org_id", profile?.org_id); // Ensure user can only delete farmers in their org
       
-      if (error) throw error;
+      console.log('Delete result error:', error);
+      
+      if (error) {
+        console.error('Delete error:', error);
+        throw error;
+      }
     },
     onSuccess: () => {
+      console.log('Farmer deleted successfully');
       queryClient.invalidateQueries({ queryKey: ["farmers"] });
       toast({
         title: "Success",
@@ -121,6 +180,7 @@ export const useFarmers = () => {
       });
     },
     onError: (error) => {
+      console.error('Delete farmer error:', error);
       toast({
         title: "Error",
         description: `Failed to delete farmer: ${error.message}`,

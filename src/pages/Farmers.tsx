@@ -3,10 +3,11 @@ import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Search, Edit, Trash, Phone, MessageCircle } from "lucide-react";
+import { Plus, Search, Edit, Trash, Phone, MessageCircle, AlertCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useFarmers } from "@/hooks/useFarmers";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -20,8 +21,11 @@ const Farmers = () => {
     crop_type: "",
   });
 
-  const { farmers, isLoading, addFarmer, deleteFarmer, isAddingFarmer } = useFarmers();
-  const { isAdmin } = useAuth();
+  const { farmers, isLoading, addFarmer, deleteFarmer, isAddingFarmer, error } = useFarmers();
+  const { isAdmin, profile, user, isLoading: authLoading } = useAuth();
+
+  console.log('Farmers page - Auth state:', { user: !!user, profile: !!profile, isLoading: authLoading });
+  console.log('Farmers page - Farmers state:', { farmersCount: farmers.length, isLoading, error });
 
   const filteredFarmers = farmers.filter(
     (farmer) =>
@@ -36,6 +40,8 @@ const Farmers = () => {
   };
 
   const handleAddFarmer = () => {
+    console.log('Adding farmer:', newFarmer);
+    
     if (!newFarmer.name || !newFarmer.phone) {
       return;
     }
@@ -64,14 +70,41 @@ const Farmers = () => {
     window.open(`https://wa.me/${phone.replace(/[^0-9]/g, '')}`);
   };
 
-  if (isLoading) {
-    return <div className="p-6">Loading farmers...</div>;
+  // Show loading state while auth is loading
+  if (authLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-agri-green-500 mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading authentication...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error if no profile or organization
+  if (!profile?.org_id) {
+    return (
+      <div className="space-y-6">
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            No organization found for your account. Please contact your administrator to assign you to an organization.
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
   }
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-agri-green-700">Farmers</h1>
+        <div>
+          <h1 className="text-3xl font-bold text-agri-green-700">Farmers</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Organization: {profile.org_id} | Role: {profile.role}
+          </p>
+        </div>
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
           <DialogTrigger asChild>
             <Button className="bg-agri-green-500 hover:bg-agri-green-600">
@@ -146,6 +179,15 @@ const Farmers = () => {
         </Dialog>
       </div>
 
+      {error && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            Error loading farmers: {error.message}
+          </AlertDescription>
+        </Alert>
+      )}
+
       <Card>
         <CardHeader>
           <CardTitle>Farmer Directory</CardTitle>
@@ -163,138 +205,149 @@ const Farmers = () => {
           </div>
         </CardHeader>
         <CardContent>
-          {/* Desktop Table */}
-          <div className="hidden md:block">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Phone</TableHead>
-                  <TableHead>Address</TableHead>
-                  <TableHead>Crop Type</TableHead>
-                  <TableHead>Balance</TableHead>
-                  <TableHead className="w-[100px]">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
+          {isLoading ? (
+            <div className="flex items-center justify-center h-32">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-agri-green-500 mx-auto mb-4"></div>
+                <p className="text-muted-foreground">Loading farmers...</p>
+              </div>
+            </div>
+          ) : (
+            <>
+              {/* Desktop Table */}
+              <div className="hidden md:block">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Phone</TableHead>
+                      <TableHead>Address</TableHead>
+                      <TableHead>Crop Type</TableHead>
+                      <TableHead>Balance</TableHead>
+                      <TableHead className="w-[100px]">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredFarmers.length > 0 ? (
+                      filteredFarmers.map((farmer) => (
+                        <TableRow key={farmer.id}>
+                          <TableCell className="font-medium">{farmer.name}</TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <span>{farmer.phone}</span>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6"
+                                onClick={() => handleCall(farmer.phone)}
+                              >
+                                <Phone className="h-3 w-3" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6"
+                                onClick={() => handleWhatsApp(farmer.phone)}
+                              >
+                                <MessageCircle className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                          <TableCell>{farmer.address || "-"}</TableCell>
+                          <TableCell>{farmer.crop_type || "-"}</TableCell>
+                          <TableCell className={`font-medium ${
+                            (farmer.balance || 0) > 0 
+                              ? "text-green-600" 
+                              : (farmer.balance || 0) < 0 
+                              ? "text-red-600" 
+                              : ""
+                          }`}>
+                            {(farmer.balance || 0) > 0 ? "+" : ""}₹{(farmer.balance || 0).toLocaleString()}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              {isAdmin && (
+                                <>
+                                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                                    <Edit className="h-4 w-4" />
+                                  </Button>
+                                  <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    className="h-8 w-8 text-red-500"
+                                    onClick={() => handleDeleteFarmer(farmer.id)}
+                                  >
+                                    <Trash className="h-4 w-4" />
+                                  </Button>
+                                </>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center py-6 text-muted-foreground">
+                          No farmers found matching your search.
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {/* Mobile Cards */}
+              <div className="md:hidden space-y-4">
                 {filteredFarmers.length > 0 ? (
                   filteredFarmers.map((farmer) => (
-                    <TableRow key={farmer.id}>
-                      <TableCell className="font-medium">{farmer.name}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <span>{farmer.phone}</span>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-6 w-6"
-                            onClick={() => handleCall(farmer.phone)}
-                          >
-                            <Phone className="h-3 w-3" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-6 w-6"
-                            onClick={() => handleWhatsApp(farmer.phone)}
-                          >
-                            <MessageCircle className="h-3 w-3" />
-                          </Button>
+                    <Card key={farmer.id}>
+                      <CardContent className="p-4">
+                        <div className="flex justify-between items-start mb-2">
+                          <h3 className="font-medium">{farmer.name}</h3>
+                          <span className={`text-sm font-medium ${
+                            (farmer.balance || 0) > 0 
+                              ? "text-green-600" 
+                              : (farmer.balance || 0) < 0 
+                              ? "text-red-600" 
+                              : ""
+                          }`}>
+                            ₹{(farmer.balance || 0).toLocaleString()}
+                          </span>
                         </div>
-                      </TableCell>
-                      <TableCell>{farmer.address || "-"}</TableCell>
-                      <TableCell>{farmer.crop_type || "-"}</TableCell>
-                      <TableCell className={`font-medium ${
-                        (farmer.balance || 0) > 0 
-                          ? "text-green-600" 
-                          : (farmer.balance || 0) < 0 
-                          ? "text-red-600" 
-                          : ""
-                      }`}>
-                        {(farmer.balance || 0) > 0 ? "+" : ""}₹{(farmer.balance || 0).toLocaleString()}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          {isAdmin && (
-                            <>
-                              <Button variant="ghost" size="icon" className="h-8 w-8">
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                              <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                className="h-8 w-8 text-red-500"
-                                onClick={() => handleDeleteFarmer(farmer.id)}
-                              >
-                                <Trash className="h-4 w-4" />
-                              </Button>
-                            </>
-                          )}
+                        <div className="space-y-2 text-sm text-muted-foreground">
+                          <div className="flex items-center gap-2">
+                            <span>{farmer.phone}</span>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleCall(farmer.phone)}
+                            >
+                              <Phone className="h-3 w-3 mr-1" />
+                              Call
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleWhatsApp(farmer.phone)}
+                            >
+                              <MessageCircle className="h-3 w-3 mr-1" />
+                              WhatsApp
+                            </Button>
+                          </div>
+                          {farmer.address && <p>📍 {farmer.address}</p>}
+                          {farmer.crop_type && <p>🌾 {farmer.crop_type}</p>}
                         </div>
-                      </TableCell>
-                    </TableRow>
+                      </CardContent>
+                    </Card>
                   ))
                 ) : (
-                  <TableRow>
-                    <TableCell colSpan={6} className="text-center py-6 text-muted-foreground">
-                      No farmers found matching your search.
-                    </TableCell>
-                  </TableRow>
+                  <div className="text-center py-6 text-muted-foreground">
+                    No farmers found matching your search.
+                  </div>
                 )}
-              </TableBody>
-            </Table>
-          </div>
-
-          {/* Mobile Cards */}
-          <div className="md:hidden space-y-4">
-            {filteredFarmers.length > 0 ? (
-              filteredFarmers.map((farmer) => (
-                <Card key={farmer.id}>
-                  <CardContent className="p-4">
-                    <div className="flex justify-between items-start mb-2">
-                      <h3 className="font-medium">{farmer.name}</h3>
-                      <span className={`text-sm font-medium ${
-                        (farmer.balance || 0) > 0 
-                          ? "text-green-600" 
-                          : (farmer.balance || 0) < 0 
-                          ? "text-red-600" 
-                          : ""
-                      }`}>
-                        ₹{(farmer.balance || 0).toLocaleString()}
-                      </span>
-                    </div>
-                    <div className="space-y-2 text-sm text-muted-foreground">
-                      <div className="flex items-center gap-2">
-                        <span>{farmer.phone}</span>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleCall(farmer.phone)}
-                        >
-                          <Phone className="h-3 w-3 mr-1" />
-                          Call
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleWhatsApp(farmer.phone)}
-                        >
-                          <MessageCircle className="h-3 w-3 mr-1" />
-                          WhatsApp
-                        </Button>
-                      </div>
-                      {farmer.address && <p>📍 {farmer.address}</p>}
-                      {farmer.crop_type && <p>🌾 {farmer.crop_type}</p>}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))
-            ) : (
-              <div className="text-center py-6 text-muted-foreground">
-                No farmers found matching your search.
               </div>
-            )}
-          </div>
+            </>
+          )}
         </CardContent>
       </Card>
     </div>
