@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useRealtimeSubscription } from "./useRealtimeSubscription";
+import { useAuth } from "./useAuth";
 
 export interface InventoryItem {
   id: number;
@@ -21,6 +22,7 @@ export interface InventoryItem {
 export const useInventory = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { profile } = useAuth();
 
   const {
     data: inventory = [],
@@ -38,6 +40,7 @@ export const useInventory = () => {
       if (error) throw error;
       return data as InventoryItem[];
     },
+    enabled: !!profile?.org_id,
   });
 
   // Subscribe to real-time updates
@@ -45,9 +48,14 @@ export const useInventory = () => {
 
   const addInventoryMutation = useMutation({
     mutationFn: async (item: Omit<InventoryItem, "id" | "created_at" | "updated_at" | "farmers" | "bags_returned" | "org_id">) => {
+      if (!profile?.org_id) throw new Error("Organization ID not found");
+      
       const { data, error } = await supabase
         .from("inventory")
-        .insert([item])
+        .insert([{
+          ...item,
+          org_id: profile.org_id
+        }])
         .select()
         .single();
       

@@ -34,7 +34,7 @@ const navigationItems = [
 ];
 
 export function AppSidebar() {
-  const { collapsed } = useSidebar();
+  const { state } = useSidebar();
   const location = useLocation();
   const { isAdmin } = useAuth();
   const currentPath = location.pathname;
@@ -46,10 +46,10 @@ export function AppSidebar() {
   const filteredItems = navigationItems.filter(item => !item.adminOnly || isAdmin);
 
   return (
-    <Sidebar className={collapsed ? 'w-14' : 'w-64'} collapsible>
+    <Sidebar className={state === 'collapsed' ? 'w-14' : 'w-64'} collapsible="icon">
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel className={collapsed ? 'sr-only' : ''}>
+          <SidebarGroupLabel className={state === 'collapsed' ? 'sr-only' : ''}>
             Navigation
           </SidebarGroupLabel>
           <SidebarGroupContent>
@@ -59,7 +59,7 @@ export function AppSidebar() {
                   <SidebarMenuButton asChild>
                     <NavLink to={item.url} end className={getNavCls}>
                       <item.icon className="h-4 w-4" />
-                      {!collapsed && <span>{item.title}</span>}
+                      {state !== 'collapsed' && <span>{item.title}</span>}
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>

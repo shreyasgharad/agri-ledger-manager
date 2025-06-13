@@ -60,7 +60,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 .single();
 
               if (profileError) throw profileError;
-              setProfile(profileData);
+              
+              // Type cast the role to ensure it matches our Profile interface
+              const typedProfile: Profile = {
+                ...profileData,
+                role: profileData.role as 'admin' | 'employee'
+              };
+              setProfile(typedProfile);
 
               if (profileData?.org_id) {
                 const { data: orgData, error: orgError } = await supabase

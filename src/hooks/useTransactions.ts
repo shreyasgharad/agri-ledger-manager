@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useRealtimeSubscription } from "./useRealtimeSubscription";
+import { useAuth } from "./useAuth";
 
 export interface Transaction {
   id: number;
@@ -21,6 +22,7 @@ export interface Transaction {
 export const useTransactions = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { profile } = useAuth();
 
   const {
     data: transactions = [],
@@ -38,6 +40,7 @@ export const useTransactions = () => {
       if (error) throw error;
       return data as Transaction[];
     },
+    enabled: !!profile?.org_id,
   });
 
   // Subscribe to real-time updates
@@ -45,10 +48,13 @@ export const useTransactions = () => {
 
   const addTransactionMutation = useMutation({
     mutationFn: async (transaction: Omit<Transaction, "id" | "created_at" | "farmers" | "org_id">) => {
+      if (!profile?.org_id) throw new Error("Organization ID not found");
+      
       const { data, error } = await supabase
         .from("transactions")
         .insert([{ 
           ...transaction, 
+          org_id: profile.org_id,
           trans_date: transaction.trans_date || new Date().toISOString()
         }])
         .select()
