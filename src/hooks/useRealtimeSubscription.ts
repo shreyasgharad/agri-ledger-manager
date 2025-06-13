@@ -23,7 +23,8 @@ export const useRealtimeSubscription = ({
           schema: 'public',
           table,
         },
-        () => {
+        (payload) => {
+          console.log(`Realtime update on ${table}:`, payload);
           onUpdate();
         }
       )

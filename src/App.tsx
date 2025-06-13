@@ -6,7 +6,6 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import { AppLayout } from "@/components/layout/AppLayout";
-import ProtectedRoute from "@/components/layout/ProtectedRoute";
 import Dashboard from "./pages/Dashboard";
 import Farmers from "./pages/Farmers";
 import Transactions from "./pages/Transactions";
@@ -14,7 +13,6 @@ import Inventory from "./pages/Inventory";
 import Billing from "./pages/Billing";
 import DataManagement from "./pages/DataManagement";
 import Settings from "./pages/Settings";
-import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -24,59 +22,20 @@ const App = () => (
     <TooltipProvider>
       <AuthProvider>
         <BrowserRouter>
-          <Routes>
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/" element={
-              <ProtectedRoute>
-                <AppLayout>
-                  <Dashboard />
-                </AppLayout>
-              </ProtectedRoute>
-            } />
-            <Route path="/farmers" element={
-              <ProtectedRoute>
-                <AppLayout>
-                  <Farmers />
-                </AppLayout>
-              </ProtectedRoute>
-            } />
-            <Route path="/transactions" element={
-              <ProtectedRoute>
-                <AppLayout>
-                  <Transactions />
-                </AppLayout>
-              </ProtectedRoute>
-            } />
-            <Route path="/inventory" element={
-              <ProtectedRoute>
-                <AppLayout>
-                  <Inventory />
-                </AppLayout>
-              </ProtectedRoute>
-            } />
-            <Route path="/billing" element={
-              <ProtectedRoute>
-                <AppLayout>
-                  <Billing />
-                </AppLayout>
-              </ProtectedRoute>
-            } />
-            <Route path="/data" element={
-              <ProtectedRoute adminOnly>
-                <AppLayout>
-                  <DataManagement />
-                </AppLayout>
-              </ProtectedRoute>
-            } />
-            <Route path="/settings" element={
-              <ProtectedRoute adminOnly>
-                <AppLayout>
-                  <Settings />
-                </AppLayout>
-              </ProtectedRoute>
-            } />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+          <AppLayout>
+            <Routes>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/farmers" element={<Farmers />} />
+              <Route path="/transactions" element={<Transactions />} />
+              <Route path="/inventory" element={<Inventory />} />
+              <Route path="/billing" element={<Billing />} />
+              <Route path="/data" element={<DataManagement />} />
+              <Route path="/settings" element={<Settings />} />
+              <Route path="/reports" element={<div className="p-6"><h1 className="text-2xl font-bold">Reports (Coming Soon)</h1><p className="text-gray-600">Future module for advanced analytics and reporting</p></div>} />
+              <Route path="/farmer-portal" element={<div className="p-6"><h1 className="text-2xl font-bold">Farmer Portal (Coming Soon)</h1><p className="text-gray-600">Future self-service portal for farmers</p></div>} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </AppLayout>
         </BrowserRouter>
         <Toaster />
         <Sonner />
