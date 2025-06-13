@@ -2,6 +2,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useRealtimeSubscription } from "./useRealtimeSubscription";
 
 export interface Farmer {
   id: string;
@@ -37,20 +38,14 @@ export const useFarmers = () => {
     },
   });
 
+  // Subscribe to real-time updates
+  useRealtimeSubscription({ table: 'farmers', onUpdate: refetch });
+
   const addFarmerMutation = useMutation({
     mutationFn: async (farmer: Omit<Farmer, "id" | "created_at" | "updated_at" | "balance" | "org_id">) => {
-      // Get user's org_id from their profile
-      const { data: profile, error: profileError } = await supabase
-        .from("profiles")
-        .select("org_id")
-        .eq("user_id", (await supabase.auth.getUser()).data.user?.id)
-        .single();
-
-      if (profileError) throw profileError;
-
       const { data, error } = await supabase
         .from("farmers")
-        .insert([{ ...farmer, org_id: profile.org_id }])
+        .insert([farmer])
         .select()
         .single();
       

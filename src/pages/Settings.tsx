@@ -1,52 +1,85 @@
 
-import React, { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { User, Building, Languages, Printer } from "lucide-react";
-import { toast } from "sonner";
+import React, { useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Building, MessageCircle, Users, Save } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
+import { useToast } from '@/hooks/use-toast';
 
 const Settings = () => {
-  const [businessInfo, setBusinessInfo] = useState({
-    name: "AgriVendor Solutions",
-    ownerName: "Suresh Patel",
-    address: "123 Farm Road, Agricultural District",
-    phone: "9876543210",
-    email: "contact@agrivendor.com",
-    gstin: "22AAAAA0000A1Z5",
-  });
+  const { organization, profile } = useAuth();
+  const { toast } = useToast();
   
-  const [bankInfo, setBankInfo] = useState({
-    accountName: "AgriVendor Solutions",
-    accountNumber: "1234567890123456",
-    ifscCode: "ABCD0001234",
-    bankName: "Agricultural Bank",
-    branch: "Main Branch",
+  const [businessInfo, setBusinessInfo] = useState({
+    name: organization?.settings?.name || organization?.name || '',
+    address: organization?.settings?.address || '',
+    gstin: organization?.settings?.gstin || '',
+    email: organization?.settings?.email || '',
+    phone: organization?.settings?.phone || '',
   });
 
-  const handleBusinessInfoChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setBusinessInfo(prev => ({ ...prev, [name]: value }));
+  const [whatsappSettings, setWhatsappSettings] = useState({
+    enabled: organization?.settings?.integrations?.whatsapp?.enabled || false,
+    apiUrl: organization?.settings?.integrations?.whatsapp?.apiUrl || '',
+    token: organization?.settings?.integrations?.whatsapp?.token || '',
+  });
+
+  // Mock user data - will be replaced with real Supabase query
+  const mockUsers = [
+    {
+      id: '1',
+      email: 'admin@example.com',
+      role: 'admin',
+      created_at: '2025-01-01',
+    },
+    {
+      id: '2',
+      email: 'employee@example.com',
+      role: 'employee',
+      created_at: '2025-01-05',
+    }
+  ];
+
+  const handleSaveBusinessInfo = async () => {
+    try {
+      // In a real implementation, this would update the organization settings in Supabase
+      console.log('Saving business info:', businessInfo);
+      
+      toast({
+        title: 'Success',
+        description: 'Business information updated successfully!',
+      });
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to update business information.',
+        variant: 'destructive',
+      });
+    }
   };
 
-  const handleBankInfoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setBankInfo(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleSaveBusinessInfo = () => {
-    console.log("Saving business info:", businessInfo);
-    toast.success("Business information updated successfully");
-  };
-
-  const handleSaveBankInfo = () => {
-    console.log("Saving bank info:", bankInfo);
-    toast.success("Banking information updated successfully");
+  const handleSaveWhatsAppSettings = async () => {
+    try {
+      // In a real implementation, this would update the WhatsApp settings in Supabase
+      console.log('Saving WhatsApp settings:', whatsappSettings);
+      
+      toast({
+        title: 'Success',
+        description: 'WhatsApp settings updated successfully!',
+      });
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to update WhatsApp settings.',
+        variant: 'destructive',
+      });
+    }
   };
 
   return (
@@ -55,163 +88,148 @@ const Settings = () => {
         <h1 className="text-3xl font-bold text-agri-green-700">Settings</h1>
       </div>
 
-      <Tabs defaultValue="business" className="space-y-6">
-        <TabsList className="grid grid-cols-3 w-full md:w-[400px]">
-          <TabsTrigger value="business">Business</TabsTrigger>
-          <TabsTrigger value="users">Users</TabsTrigger>
-          <TabsTrigger value="preferences">Preferences</TabsTrigger>
+      <Tabs defaultValue="business" className="w-full">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="business">Business Info</TabsTrigger>
+          <TabsTrigger value="integrations">Integrations</TabsTrigger>
+          <TabsTrigger value="users">User Management</TabsTrigger>
         </TabsList>
 
         <TabsContent value="business" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Business Information</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <Building className="h-5 w-5" />
+                Business Information
+              </CardTitle>
               <CardDescription>
-                Update your business details that appear on invoices and receipts.
+                Manage your organization's basic information and details.
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
+            <CardContent className="space-y-4">
+              <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="name">Business Name</Label>
+                  <Label htmlFor="business-name">Business Name</Label>
                   <Input
-                    id="name"
-                    name="name"
+                    id="business-name"
                     value={businessInfo.name}
-                    onChange={handleBusinessInfoChange}
+                    onChange={(e) => setBusinessInfo({...businessInfo, name: e.target.value})}
+                    placeholder="Enter business name"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="ownerName">Owner Name</Label>
+                  <Label htmlFor="business-email">Email</Label>
                   <Input
-                    id="ownerName"
-                    name="ownerName"
-                    value={businessInfo.ownerName}
-                    onChange={handleBusinessInfoChange}
+                    id="business-email"
+                    type="email"
+                    value={businessInfo.email}
+                    onChange={(e) => setBusinessInfo({...businessInfo, email: e.target.value})}
+                    placeholder="Enter business email"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="address">Address</Label>
-                  <Textarea
-                    id="address"
-                    name="address"
-                    value={businessInfo.address}
-                    onChange={handleBusinessInfoChange}
-                    rows={3}
-                  />
-                </div>
-                <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="phone">Phone Number</Label>
-                    <Input
-                      id="phone"
-                      name="phone"
-                      value={businessInfo.phone}
-                      onChange={handleBusinessInfoChange}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
-                    <Input
-                      id="email"
-                      name="email"
-                      value={businessInfo.email}
-                      onChange={handleBusinessInfoChange}
-                      type="email"
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="gstin">GSTIN</Label>
+                  <Label htmlFor="business-phone">Phone</Label>
                   <Input
-                    id="gstin"
-                    name="gstin"
+                    id="business-phone"
+                    value={businessInfo.phone}
+                    onChange={(e) => setBusinessInfo({...businessInfo, phone: e.target.value})}
+                    placeholder="Enter business phone"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="business-gstin">GSTIN</Label>
+                  <Input
+                    id="business-gstin"
                     value={businessInfo.gstin}
-                    onChange={handleBusinessInfoChange}
+                    onChange={(e) => setBusinessInfo({...businessInfo, gstin: e.target.value})}
+                    placeholder="Enter GSTIN number"
                   />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    This will appear on your invoices and receipts.
-                  </p>
-                </div>
-                
-                <div className="flex justify-end pt-4">
-                  <Button 
-                    onClick={handleSaveBusinessInfo}
-                    className="bg-agri-green-500 hover:bg-agri-green-600"
-                  >
-                    Save Business Information
-                  </Button>
                 </div>
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="business-address">Address</Label>
+                <Textarea
+                  id="business-address"
+                  value={businessInfo.address}
+                  onChange={(e) => setBusinessInfo({...businessInfo, address: e.target.value})}
+                  placeholder="Enter complete business address"
+                  rows={3}
+                />
+              </div>
+              <Button onClick={handleSaveBusinessInfo} className="bg-agri-green-500 hover:bg-agri-green-600">
+                <Save className="h-4 w-4 mr-2" />
+                Save Business Info
+              </Button>
             </CardContent>
           </Card>
+        </TabsContent>
 
+        <TabsContent value="integrations" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Banking Information</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <MessageCircle className="h-5 w-5" />
+                WhatsApp Integration
+              </CardTitle>
               <CardDescription>
-                Update your banking details for transactions.
+                Configure WhatsApp API settings for sending bills and notifications.
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="accountName">Account Name</Label>
-                  <Input
-                    id="accountName"
-                    name="accountName"
-                    value={bankInfo.accountName}
-                    onChange={handleBankInfoChange}
-                  />
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label>Enable WhatsApp Integration</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Allow sending bills and notifications via WhatsApp
+                  </p>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="accountNumber">Account Number</Label>
-                  <Input
-                    id="accountNumber"
-                    name="accountNumber"
-                    value={bankInfo.accountNumber}
-                    onChange={handleBankInfoChange}
-                  />
-                </div>
-                <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="ifscCode">IFSC Code</Label>
-                    <Input
-                      id="ifscCode"
-                      name="ifscCode"
-                      value={bankInfo.ifscCode}
-                      onChange={handleBankInfoChange}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="bankName">Bank Name</Label>
-                    <Input
-                      id="bankName"
-                      name="bankName"
-                      value={bankInfo.bankName}
-                      onChange={handleBankInfoChange}
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="branch">Branch</Label>
-                  <Input
-                    id="branch"
-                    name="branch"
-                    value={bankInfo.branch}
-                    onChange={handleBankInfoChange}
-                  />
-                </div>
-                
-                <div className="flex justify-end pt-4">
-                  <Button 
-                    onClick={handleSaveBankInfo}
-                    className="bg-agri-green-500 hover:bg-agri-green-600"
-                  >
-                    Save Banking Information
-                  </Button>
-                </div>
+                <Switch
+                  checked={whatsappSettings.enabled}
+                  onCheckedChange={(checked) => 
+                    setWhatsappSettings({...whatsappSettings, enabled: checked})
+                  }
+                />
               </div>
+              
+              {whatsappSettings.enabled && (
+                <div className="space-y-4 pt-4 border-t">
+                  <div className="space-y-2">
+                    <Label htmlFor="whatsapp-api-url">API URL</Label>
+                    <Input
+                      id="whatsapp-api-url"
+                      value={whatsappSettings.apiUrl}
+                      onChange={(e) => setWhatsappSettings({...whatsappSettings, apiUrl: e.target.value})}
+                      placeholder="Enter WhatsApp API URL"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="whatsapp-token">API Token</Label>
+                    <Input
+                      id="whatsapp-token"
+                      type="password"
+                      value={whatsappSettings.token}
+                      onChange={(e) => setWhatsappSettings({...whatsappSettings, token: e.target.value})}
+                      placeholder="Enter WhatsApp API token"
+                    />
+                  </div>
+                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <p className="text-sm text-blue-800">
+                      <strong>Setup Instructions:</strong>
+                      <br />
+                      1. Register for a WhatsApp Business API account
+                      <br />
+                      2. Get your API URL and token from your provider
+                      <br />
+                      3. Enter the details above and test the connection
+                    </p>
+                  </div>
+                </div>
+              )}
+              
+              <Button onClick={handleSaveWhatsAppSettings} className="bg-agri-green-500 hover:bg-agri-green-600">
+                <Save className="h-4 w-4 mr-2" />
+                Save WhatsApp Settings
+              </Button>
             </CardContent>
           </Card>
         </TabsContent>
@@ -219,285 +237,53 @@ const Settings = () => {
         <TabsContent value="users" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>User Management</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="h-5 w-5" />
+                User Management
+              </CardTitle>
               <CardDescription>
-                Manage users who can access this application.
+                View and manage user accounts in your organization.
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-6">
-                <div className="p-4 rounded-lg border border-agri-green-200 bg-agri-green-100">
-                  <div className="flex gap-4 items-center">
-                    <div className="bg-agri-green-500 text-white p-3 rounded-full">
-                      <User className="h-6 w-6" />
-                    </div>
-                    <div>
-                      <h3 className="font-medium">Admin (You)</h3>
-                      <p className="text-sm text-muted-foreground">admin@agrivendor.com • Full Access</p>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="space-y-4">
-                  <h3 className="font-medium">Staff Users</h3>
-                  
-                  <div className="p-4 rounded-lg border">
-                    <div className="flex gap-4 items-center">
-                      <div className="bg-gray-200 p-3 rounded-full">
-                        <User className="h-6 w-6" />
-                      </div>
-                      <div className="flex-1">
-                        <h3 className="font-medium">Ramesh Kumar</h3>
-                        <p className="text-sm text-muted-foreground">ramesh@agrivendor.com • Limited Access</p>
-                      </div>
-                      <Button variant="outline" size="sm">Edit</Button>
-                    </div>
-                  </div>
-                  
-                  <div className="p-4 rounded-lg border">
-                    <div className="flex gap-4 items-center">
-                      <div className="bg-gray-200 p-3 rounded-full">
-                        <User className="h-6 w-6" />
-                      </div>
-                      <div className="flex-1">
-                        <h3 className="font-medium">Priya Singh</h3>
-                        <p className="text-sm text-muted-foreground">priya@agrivendor.com • Limited Access</p>
-                      </div>
-                      <Button variant="outline" size="sm">Edit</Button>
-                    </div>
-                  </div>
-                </div>
-                
-                <Button className="w-full bg-agri-green-500 hover:bg-agri-green-600">
-                  Add New User
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Role</TableHead>
+                    <TableHead>Joined Date</TableHead>
+                    <TableHead>Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {mockUsers.map((user) => (
+                    <TableRow key={user.id}>
+                      <TableCell className="font-medium">{user.email}</TableCell>
+                      <TableCell>
+                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                          user.role === 'admin' 
+                            ? 'bg-purple-100 text-purple-800' 
+                            : 'bg-gray-100 text-gray-800'
+                        }`}>
+                          {user.role}
+                        </span>
+                      </TableCell>
+                      <TableCell>{new Date(user.created_at).toLocaleDateString()}</TableCell>
+                      <TableCell>
+                        <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold bg-green-100 text-green-800">
+                          Active
+                        </span>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Access Permissions</CardTitle>
-              <CardDescription>
-                Define what different user roles can access.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-6">
-                <div className="space-y-4">
-                  <h3 className="font-medium">Admin Role</h3>
-                  <p className="text-sm text-muted-foreground">Full access to all features and settings</p>
-                </div>
-                
-                <div className="space-y-3">
-                  <h3 className="font-medium">Staff Role</h3>
-                  <div className="flex items-center justify-between py-2">
-                    <div className="space-y-0.5">
-                      <Label htmlFor="farmers">Farmer Management</Label>
-                      <p className="text-xs text-muted-foreground">Can view and edit farmer details</p>
-                    </div>
-                    <Switch id="farmers" defaultChecked />
-                  </div>
-                  <div className="flex items-center justify-between py-2">
-                    <div className="space-y-0.5">
-                      <Label htmlFor="transactions">Transactions</Label>
-                      <p className="text-xs text-muted-foreground">Can record transactions but not delete</p>
-                    </div>
-                    <Switch id="transactions" defaultChecked />
-                  </div>
-                  <div className="flex items-center justify-between py-2">
-                    <div className="space-y-0.5">
-                      <Label htmlFor="inventory">Inventory Management</Label>
-                      <p className="text-xs text-muted-foreground">Can track inventory and bags</p>
-                    </div>
-                    <Switch id="inventory" defaultChecked />
-                  </div>
-                  <div className="flex items-center justify-between py-2">
-                    <div className="space-y-0.5">
-                      <Label htmlFor="billing">Billing</Label>
-                      <p className="text-xs text-muted-foreground">Can create and print bills</p>
-                    </div>
-                    <Switch id="billing" defaultChecked />
-                  </div>
-                  <div className="flex items-center justify-between py-2">
-                    <div className="space-y-0.5">
-                      <Label htmlFor="dataManagement">Data Management</Label>
-                      <p className="text-xs text-muted-foreground">Can import/export data</p>
-                    </div>
-                    <Switch id="dataManagement" />
-                  </div>
-                  <div className="flex items-center justify-between py-2">
-                    <div className="space-y-0.5">
-                      <Label htmlFor="settings">Settings</Label>
-                      <p className="text-xs text-muted-foreground">Can change application settings</p>
-                    </div>
-                    <Switch id="settings" />
-                  </div>
-                </div>
-                
-                <div className="flex justify-end pt-4">
-                  <Button className="bg-agri-green-500 hover:bg-agri-green-600">
-                    Save Permissions
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="preferences" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Application Preferences</CardTitle>
-              <CardDescription>
-                Customize how the application works for you.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-6">
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between py-2">
-                    <div className="space-y-0.5">
-                      <Label htmlFor="notificationsEnabled">Notifications</Label>
-                      <p className="text-xs text-muted-foreground">Receive alerts about important events</p>
-                    </div>
-                    <Switch id="notificationsEnabled" defaultChecked />
-                  </div>
-                  
-                  <div className="flex items-center justify-between py-2">
-                    <div className="space-y-0.5">
-                      <Label htmlFor="autoBackup">Automatic Backups</Label>
-                      <p className="text-xs text-muted-foreground">Back up your data regularly</p>
-                    </div>
-                    <Switch id="autoBackup" defaultChecked />
-                  </div>
-                  
-                  <div className="flex items-center justify-between py-2">
-                    <div className="space-y-0.5">
-                      <Label htmlFor="darkMode">Dark Mode</Label>
-                      <p className="text-xs text-muted-foreground">Use dark theme for the application</p>
-                    </div>
-                    <Switch id="darkMode" />
-                  </div>
-                </div>
-                
-                <div className="space-y-2 pt-4">
-                  <Label htmlFor="language">Language</Label>
-                  <Select defaultValue="en">
-                    <SelectTrigger className="w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="en">English</SelectItem>
-                      <SelectItem value="hi">Hindi</SelectItem>
-                      <SelectItem value="mr">Marathi</SelectItem>
-                      <SelectItem value="gu">Gujarati</SelectItem>
-                      <SelectItem value="pa">Punjabi</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="dateFormat">Date Format</Label>
-                  <Select defaultValue="dd-mm-yyyy">
-                    <SelectTrigger className="w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="dd-mm-yyyy">DD-MM-YYYY</SelectItem>
-                      <SelectItem value="mm-dd-yyyy">MM-DD-YYYY</SelectItem>
-                      <SelectItem value="yyyy-mm-dd">YYYY-MM-DD</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="currency">Currency Format</Label>
-                  <Select defaultValue="inr">
-                    <SelectTrigger className="w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="inr">Indian Rupee (₹)</SelectItem>
-                      <SelectItem value="usd">US Dollar ($)</SelectItem>
-                      <SelectItem value="eur">Euro (€)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                <div className="flex justify-end pt-4">
-                  <Button className="bg-agri-green-500 hover:bg-agri-green-600">
-                    Save Preferences
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Printer Settings</CardTitle>
-              <CardDescription>
-                Configure your printer connection and preferences.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-6">
-                <div className="flex items-center gap-3 p-4 bg-muted rounded-lg">
-                  <Printer className="h-8 w-8 text-agri-green-500" />
-                  <div>
-                    <p className="font-medium">Bluetooth Thermal Printer</p>
-                    <p className="text-xs text-muted-foreground">Not connected</p>
-                  </div>
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="printerSize">Printer Type</Label>
-                  <Select defaultValue="58mm">
-                    <SelectTrigger className="w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="58mm">58mm Thermal Printer</SelectItem>
-                      <SelectItem value="80mm">80mm Thermal Printer</SelectItem>
-                      <SelectItem value="a4">A4 Printer</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="paperSize">Paper Size</Label>
-                  <Select defaultValue="58mm">
-                    <SelectTrigger className="w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="58mm">58mm</SelectItem>
-                      <SelectItem value="80mm">80mm</SelectItem>
-                      <SelectItem value="a4">A4</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="printCopies">Default Print Copies</Label>
-                  <Select defaultValue="1">
-                    <SelectTrigger className="w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="1">1</SelectItem>
-                      <SelectItem value="2">2</SelectItem>
-                      <SelectItem value="3">3</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                <div className="flex justify-end pt-4">
-                  <Button className="bg-agri-green-500 hover:bg-agri-green-600">
-                    Connect Printer
-                  </Button>
-                </div>
+              <div className="mt-6 p-4 bg-gray-50 border rounded-lg">
+                <p className="text-sm text-gray-600">
+                  <strong>Note:</strong> User invitation and role management features will be available in a future update. 
+                  Currently showing read-only view of existing users.
+                </p>
               </div>
             </CardContent>
           </Card>

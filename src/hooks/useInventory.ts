@@ -2,6 +2,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useRealtimeSubscription } from "./useRealtimeSubscription";
 
 export interface InventoryItem {
   id: number;
@@ -39,20 +40,14 @@ export const useInventory = () => {
     },
   });
 
+  // Subscribe to real-time updates
+  useRealtimeSubscription({ table: 'inventory', onUpdate: refetch });
+
   const addInventoryMutation = useMutation({
     mutationFn: async (item: Omit<InventoryItem, "id" | "created_at" | "updated_at" | "farmers" | "bags_returned" | "org_id">) => {
-      // Get user's org_id from their profile
-      const { data: profile, error: profileError } = await supabase
-        .from("profiles")
-        .select("org_id")
-        .eq("user_id", (await supabase.auth.getUser()).data.user?.id)
-        .single();
-
-      if (profileError) throw profileError;
-
       const { data, error } = await supabase
         .from("inventory")
-        .insert([{ ...item, org_id: profile.org_id }])
+        .insert([item])
         .select()
         .single();
       
@@ -61,6 +56,7 @@ export const useInventory = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["inventory"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
       toast({
         title: "Success",
         description: "Inventory record added successfully!",
@@ -89,6 +85,7 @@ export const useInventory = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["inventory"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
       toast({
         title: "Success",
         description: "Inventory updated successfully!",

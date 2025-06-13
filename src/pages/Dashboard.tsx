@@ -1,145 +1,160 @@
 
-import React from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
-import { Users, Package, Receipt, FileText } from "lucide-react";
-
-const mockData = {
-  stats: {
-    totalFarmers: 42,
-    activeBags: 156,
-    pendingAmount: 78500,
-    completedTransactions: 124
-  },
-  recentTransactions: [
-    { id: 1, farmer: "Rajesh Kumar", type: "Received", amount: 5000, date: "2025-04-21" },
-    { id: 2, farmer: "Sunil Verma", type: "Given", amount: 3500, date: "2025-04-20" },
-    { id: 3, farmer: "Meena Patel", type: "Received", amount: 7500, date: "2025-04-18" },
-  ],
-  monthlyData: [
-    { name: "Jan", received: 12000, given: 8000 },
-    { name: "Feb", received: 19000, given: 11000 },
-    { name: "Mar", received: 15000, given: 10000 },
-    { name: "Apr", received: 21000, given: 14000 }
-  ]
-};
+import React from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { Users, Package, Receipt, FileText, ArrowUp, ArrowDown } from 'lucide-react';
+import StatsCard from '@/components/dashboard/StatsCard';
+import { useDashboardStats } from '@/hooks/useDashboardStats';
+import { useTransactions } from '@/hooks/useTransactions';
+import { Link } from 'react-router-dom';
 
 const Dashboard = () => {
+  const { stats, isLoading: statsLoading } = useDashboardStats();
+  const { transactions, isLoading: transactionsLoading } = useTransactions();
+
+  // Get recent transactions (last 10)
+  const recentTransactions = transactions.slice(0, 10);
+
+  // Generate monthly chart data
+  const monthlyData = React.useMemo(() => {
+    const months = {};
+    const currentDate = new Date();
+    
+    // Initialize last 6 months
+    for (let i = 5; i >= 0; i--) {
+      const date = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
+      const monthKey = date.toLocaleDateString('en-US', { month: 'short' });
+      months[monthKey] = { name: monthKey, given: 0, received: 0 };
+    }
+
+    // Aggregate transaction data
+    transactions.forEach(transaction => {
+      const date = new Date(transaction.trans_date || transaction.created_at);
+      const monthKey = date.toLocaleDateString('en-US', { month: 'short' });
+      
+      if (months[monthKey]) {
+        if (transaction.type === 'Given') {
+          months[monthKey].given += transaction.amount;
+        } else {
+          months[monthKey].received += transaction.amount;
+        }
+      }
+    });
+
+    return Object.values(months);
+  }, [transactions]);
+
+  if (statsLoading || transactionsLoading) {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-3xl font-bold text-agri-green-700">Dashboard</h1>
+        <div className="text-center py-6">Loading dashboard...</div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold text-agri-green-700">Dashboard</h1>
         <p className="text-muted-foreground">
-          {new Date().toLocaleDateString("en-US", {
-            weekday: "long",
-            year: "numeric",
-            month: "long",
-            day: "numeric"
+          {new Date().toLocaleDateString('en-US', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
           })}
         </p>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
-            <CardTitle className="text-sm font-medium">Total Farmers</CardTitle>
-            <Users className="h-4 w-4 text-agri-green-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{mockData.stats.totalFarmers}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Active in database
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
-            <CardTitle className="text-sm font-medium">Active Bags</CardTitle>
-            <Package className="h-4 w-4 text-agri-brown-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{mockData.stats.activeBags}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Currently with farmers
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
-            <CardTitle className="text-sm font-medium">Pending Amount</CardTitle>
-            <Receipt className="h-4 w-4 text-red-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">₹{mockData.stats.pendingAmount.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              To be collected
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
-            <CardTitle className="text-sm font-medium">Transactions</CardTitle>
-            <FileText className="h-4 w-4 text-blue-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{mockData.stats.completedTransactions}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Completed this month
-            </p>
-          </CardContent>
-        </Card>
+        <StatsCard
+          title="Total Farmers"
+          value={stats?.totalFarmers || 0}
+          description="Active in database"
+          icon={Users}
+        />
+        <StatsCard
+          title="Pending Amount"
+          value={`₹${(stats?.pendingAmount || 0).toLocaleString()}`}
+          description="To be collected"
+          icon={Receipt}
+          iconColor="text-red-500"
+        />
+        <StatsCard
+          title="Active Bags"
+          value={stats?.activeBags || 0}
+          description="Currently with farmers"
+          icon={Package}
+          iconColor="text-agri-brown-500"
+        />
+        <StatsCard
+          title="This Month"
+          value={stats?.monthlyTransactions || 0}
+          description="Completed transactions"
+          icon={FileText}
+          iconColor="text-blue-500"
+        />
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
-        <Card className="col-span-1">
+        <Card>
           <CardHeader>
             <CardTitle>Recent Transactions</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {mockData.recentTransactions.map((transaction) => (
-                <div key={transaction.id} className="flex items-center justify-between border-b pb-2">
-                  <div>
-                    <p className="font-medium">{transaction.farmer}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {transaction.date}
-                    </p>
+              {recentTransactions.length > 0 ? (
+                recentTransactions.map((transaction) => (
+                  <div key={transaction.id} className="flex items-center justify-between border-b pb-2">
+                    <div>
+                      <Link 
+                        to={`/farmers`} 
+                        className="font-medium hover:text-agri-green-600"
+                      >
+                        {transaction.farmers?.name}
+                      </Link>
+                      <p className="text-sm text-muted-foreground">
+                        {new Date(transaction.trans_date || transaction.created_at).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <div className={`flex items-center gap-1 font-medium ${
+                      transaction.type === 'Received' ? 'text-green-600' : 'text-red-600'
+                    }`}>
+                      {transaction.type === 'Received' ? (
+                        <ArrowDown className="h-4 w-4" />
+                      ) : (
+                        <ArrowUp className="h-4 w-4" />
+                      )}
+                      {transaction.type === 'Received' ? '+' : '-'}₹{transaction.amount.toLocaleString()}
+                    </div>
                   </div>
-                  <div className={`font-medium ${
-                    transaction.type === "Received" ? "text-green-600" : "text-red-600"
-                  }`}>
-                    {transaction.type === "Received" ? "+" : "-"}₹{transaction.amount}
-                  </div>
-                </div>
-              ))}
+                ))
+              ) : (
+                <p className="text-center text-muted-foreground py-4">
+                  No recent transactions
+                </p>
+              )}
             </div>
           </CardContent>
         </Card>
 
-        <Card className="col-span-1">
+        <Card>
           <CardHeader>
             <CardTitle>Monthly Transactions</CardTitle>
           </CardHeader>
-          <CardContent className="p-0">
-            <div className="h-[250px] w-full">
-              <BarChart
-                width={350}
-                height={250}
-                data={mockData.monthlyData}
-                margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-              >
+          <CardContent>
+            <ResponsiveContainer width="100%" height={250}>
+              <BarChart data={monthlyData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="name" />
                 <YAxis />
-                <Tooltip formatter={(value) => `₹${value}`} />
+                <Tooltip formatter={(value) => `₹${value?.toLocaleString()}`} />
                 <Legend />
                 <Bar dataKey="received" name="Amount Received" fill="#52A531" />
                 <Bar dataKey="given" name="Amount Given" fill="#AC8C59" />
               </BarChart>
-            </div>
+            </ResponsiveContainer>
           </CardContent>
         </Card>
       </div>

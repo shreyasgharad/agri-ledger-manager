@@ -2,6 +2,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useRealtimeSubscription } from "./useRealtimeSubscription";
 
 export interface Transaction {
   id: number;
@@ -39,22 +40,15 @@ export const useTransactions = () => {
     },
   });
 
+  // Subscribe to real-time updates
+  useRealtimeSubscription({ table: 'transactions', onUpdate: refetch });
+
   const addTransactionMutation = useMutation({
     mutationFn: async (transaction: Omit<Transaction, "id" | "created_at" | "farmers" | "org_id">) => {
-      // Get user's org_id from their profile
-      const { data: profile, error: profileError } = await supabase
-        .from("profiles")
-        .select("org_id")
-        .eq("user_id", (await supabase.auth.getUser()).data.user?.id)
-        .single();
-
-      if (profileError) throw profileError;
-
       const { data, error } = await supabase
         .from("transactions")
         .insert([{ 
           ...transaction, 
-          org_id: profile.org_id,
           trans_date: transaction.trans_date || new Date().toISOString()
         }])
         .select()
@@ -66,6 +60,7 @@ export const useTransactions = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
       queryClient.invalidateQueries({ queryKey: ["farmers"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
       toast({
         title: "Success",
         description: "Transaction recorded successfully!",

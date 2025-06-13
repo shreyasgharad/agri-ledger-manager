@@ -1,239 +1,148 @@
 
-import React, { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Plus, Printer, Eye, Download, RefreshCw } from "lucide-react";
-import { useBills } from "@/hooks/useBills";
+import React, { useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Plus, Search, Printer, MessageCircle, FileText } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
 
-// Mock list of farmers for the dropdown
-const mockFarmersList = [
-  { id: "1", name: "Rajesh Kumar" },
-  { id: "2", name: "Sunil Verma" },
-  { id: "3", name: "Meena Patel" },
-  { id: "4", name: "Vikram Singh" },
-  { id: "5", name: "Anita Kumari" },
-  { id: "6", name: "Dinesh Yadav" },
-];
-
-// Mock list of products with price per bag
-const mockProducts = [
-  { id: "1", name: "Rice", pricePerBag: 500 },
-  { id: "2", name: "Wheat", pricePerBag: 450 },
-  { id: "3", name: "Cotton", pricePerBag: 1200 },
-  { id: "4", name: "Vegetables", pricePerBag: 350 },
-  { id: "5", name: "Pulses", pricePerBag: 800 },
-  { id: "6", name: "Sugarcane", pricePerBag: 600 },
+// Mock data for now - will be replaced with real Supabase data
+const mockBills = [
+  {
+    id: 1,
+    billNumber: 'BILL-001',
+    date: '2025-01-10',
+    farmerName: 'Rajesh Kumar',
+    amount: 5000,
+    status: 'Paid'
+  },
+  {
+    id: 2,
+    billNumber: 'BILL-002', 
+    date: '2025-01-09',
+    farmerName: 'Sunil Verma',
+    amount: 3500,
+    status: 'Pending'
+  }
 ];
 
 const Billing = () => {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [isCreateBillOpen, setIsCreateBillOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [isGenerateDialogOpen, setIsGenerateDialogOpen] = useState(false);
   const [newBill, setNewBill] = useState({
-    farmerId: "",
-    productId: "",
-    quantity: "",
-    cessRate: "5",
+    farmer: '',
+    amount: '',
+    items: '',
+    notes: ''
   });
+  const { organization } = useAuth();
 
-  const { bills, isLoading, error, refetch, addBill, isAddingBill } = useBills();
-
-  const filteredBills = bills.filter(
-    (bill) =>
-      String(bill.billId || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-      String(bill.customer || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-      String(bill.total || "").toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredBills = mockBills.filter(bill =>
+    bill.farmerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    bill.billNumber.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setNewBill({ ...newBill, [name]: value });
-  };
-
-  const handleSelectChange = (name: string, value: string) => {
-    setNewBill({ ...newBill, [name]: value });
-  };
-
-  const calculateTotal = () => {
-    if (!newBill.productId || !newBill.quantity) return 0;
-    
-    const product = mockProducts.find(p => p.id === newBill.productId);
-    if (!product) return 0;
-    
-    const subtotal = product.pricePerBag * Number(newBill.quantity);
-    const cessAmount = subtotal * (Number(newBill.cessRate) / 100);
-    
-    return subtotal + cessAmount;
-  };
-
-  const handleCreateBill = () => {
-    const selectedFarmer = mockFarmersList.find(f => f.id === newBill.farmerId);
-    const totalAmount = calculateTotal();
-    
-    if (!selectedFarmer || totalAmount === 0) {
-      return;
-    }
-
-    const billData = {
-      billId: `BILL-${Date.now()}`,
-      customer: selectedFarmer.name,
-      total: totalAmount.toString(),
-      date: new Date().toISOString().split('T')[0],
-    };
-
-    addBill(billData);
-    setIsCreateBillOpen(false);
+  const handleGenerateBill = () => {
+    // Bill generation logic will be implemented here
+    console.log('Generating bill:', newBill);
+    setIsGenerateDialogOpen(false);
     setNewBill({
-      farmerId: "",
-      productId: "",
-      quantity: "",
-      cessRate: "5",
+      farmer: '',
+      amount: '',
+      items: '',
+      notes: ''
     });
   };
 
-  // Calculate summary data from the actual bills
-  const totalBills = bills.length;
-  const totalAmount = bills.reduce((acc, bill) => acc + parseFloat(bill.total || "0"), 0);
-  
-  // For now, we'll treat all bills as paid since we don't have status in the Google Sheets data
-  // You can modify the Google Sheets structure to include a status column if needed
-  const paidAmount = totalAmount; // Assuming all are paid for now
-  const pendingAmount = 0; // No pending since we don't have status
+  const handlePrint = (billId: number) => {
+    console.log('Printing bill:', billId);
+    // Print logic will be implemented here
+  };
+
+  const handleWhatsAppSend = (billId: number) => {
+    console.log('Sending via WhatsApp:', billId);
+    // WhatsApp integration will be implemented here
+  };
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold text-agri-green-700">Billing</h1>
-        <div className="flex gap-2">
-          <Button 
-            variant="outline" 
-            onClick={() => refetch()}
-            disabled={isLoading}
-          >
-            <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-            Refresh
-          </Button>
-          <Dialog open={isCreateBillOpen} onOpenChange={setIsCreateBillOpen}>
-            <DialogTrigger asChild>
-              <Button className="bg-agri-green-500 hover:bg-agri-green-600">
-                <Plus className="h-4 w-4 mr-2" /> Create Bill
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[500px]">
-              <DialogHeader>
-                <DialogTitle>Create New Bill</DialogTitle>
-                <DialogDescription>
-                  Generate a new bill for a farmer.
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4 py-2">
-                <div className="space-y-2">
-                  <Label htmlFor="farmerId">Farmer</Label>
-                  <Select
-                    onValueChange={(value) => handleSelectChange("farmerId", value)}
-                    value={newBill.farmerId}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a farmer" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {mockFarmersList.map((farmer) => (
-                        <SelectItem key={farmer.id} value={farmer.id}>
-                          {farmer.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="productId">Product</Label>
-                  <Select
-                    onValueChange={(value) => handleSelectChange("productId", value)}
-                    value={newBill.productId}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a product" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {mockProducts.map((product) => (
-                        <SelectItem key={product.id} value={product.id}>
-                          {product.name} (₹{product.pricePerBag}/bag)
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="quantity">Number of Bags</Label>
-                  <Input
-                    id="quantity"
-                    name="quantity"
-                    value={newBill.quantity}
-                    onChange={handleInputChange}
-                    placeholder="Enter number of bags"
-                    type="number"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="cessRate">Cess Rate (%)</Label>
-                  <Input
-                    id="cessRate"
-                    name="cessRate"
-                    value={newBill.cessRate}
-                    onChange={handleInputChange}
-                    placeholder="Enter cess rate"
-                    type="number"
-                  />
-                </div>
-                <div className="pt-3 border-t">
-                  <div className="flex justify-between items-center text-sm">
-                    <span>Subtotal:</span>
-                    <span>
-                      ₹{newBill.productId && newBill.quantity ? 
-                        (mockProducts.find(p => p.id === newBill.productId)?.pricePerBag || 0) * Number(newBill.quantity) 
-                        : 0}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center text-sm my-1">
-                    <span>Cess ({newBill.cessRate}%):</span>
-                    <span>
-                      ₹{newBill.productId && newBill.quantity ? 
-                        ((mockProducts.find(p => p.id === newBill.productId)?.pricePerBag || 0) * Number(newBill.quantity)) * (Number(newBill.cessRate) / 100) 
-                        : 0}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center font-semibold text-lg mt-2">
-                    <span>Total:</span>
-                    <span>₹{calculateTotal().toLocaleString()}</span>
-                  </div>
-                </div>
+        <Dialog open={isGenerateDialogOpen} onOpenChange={setIsGenerateDialogOpen}>
+          <DialogTrigger asChild>
+            <Button className="bg-agri-green-500 hover:bg-agri-green-600">
+              <Plus className="h-4 w-4 mr-2" /> Generate Bill
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Generate New Bill</DialogTitle>
+              <DialogDescription>
+                Create a new bill for a farmer transaction.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-2">
+              <div className="space-y-2">
+                <Label htmlFor="farmer">Farmer</Label>
+                <Input
+                  id="farmer"
+                  value={newBill.farmer}
+                  onChange={(e) => setNewBill({...newBill, farmer: e.target.value})}
+                  placeholder="Select or enter farmer name"
+                />
               </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setIsCreateBillOpen(false)}>
-                  Cancel
-                </Button>
-                <Button 
-                  onClick={handleCreateBill} 
-                  className="bg-agri-green-500 hover:bg-agri-green-600"
-                  disabled={isAddingBill}
-                >
-                  {isAddingBill ? "Generating..." : "Generate Bill"}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        </div>
+              <div className="space-y-2">
+                <Label htmlFor="amount">Amount (₹)</Label>
+                <Input
+                  id="amount"
+                  type="number"
+                  value={newBill.amount}
+                  onChange={(e) => setNewBill({...newBill, amount: e.target.value})}
+                  placeholder="Enter amount"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="items">Items/Description</Label>
+                <Textarea
+                  id="items"
+                  value={newBill.items}
+                  onChange={(e) => setNewBill({...newBill, items: e.target.value})}
+                  placeholder="Enter bill items or description"
+                  rows={3}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="notes">Additional Notes</Label>
+                <Textarea
+                  id="notes"
+                  value={newBill.notes}
+                  onChange={(e) => setNewBill({...newBill, notes: e.target.value})}
+                  placeholder="Any additional notes"
+                  rows={2}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsGenerateDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleGenerateBill} className="bg-agri-green-500 hover:bg-agri-green-600">
+                Generate & Preview
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Bill Records</CardTitle>
+          <CardTitle>Bill History</CardTitle>
           <CardDescription>
-            View and manage all billing records from Google Sheets. Print or download bills as needed.
+            View and manage all generated bills.
           </CardDescription>
           <div className="relative my-2">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -246,92 +155,100 @@ const Billing = () => {
           </div>
         </CardHeader>
         <CardContent>
-          {error && (
-            <div className="text-red-600 mb-4 p-3 bg-red-50 rounded-lg">
-              Error loading bills: {error.message}
-            </div>
-          )}
-          
-          {isLoading ? (
-            <div className="text-center py-6">Loading bills from Google Sheets...</div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Bill ID</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Customer</TableHead>
-                  <TableHead>Total Amount</TableHead>
-                  <TableHead className="w-[150px]">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredBills.length > 0 ? (
-                  filteredBills.map((bill, index) => (
-                    <TableRow key={`${bill.billId}-${index}`}>
-                      <TableCell className="font-medium">{bill.billId}</TableCell>
-                      <TableCell>{bill.date}</TableCell>
-                      <TableCell>{bill.customer}</TableCell>
-                      <TableCell>₹{bill.total}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Button variant="ghost" size="sm" className="h-8 w-8" title="Print Bill">
-                            <Printer className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="sm" className="h-8 w-8" title="View Bill">
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="sm" className="h-8 w-8" title="Download Bill">
-                            <Download className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={5} className="text-center py-6 text-muted-foreground">
-                      {isLoading ? "Loading..." : "No bills found matching your search."}
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Bill #</TableHead>
+                <TableHead>Date</TableHead>
+                <TableHead>Farmer</TableHead>
+                <TableHead>Amount</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="w-[150px]">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredBills.length > 0 ? (
+                filteredBills.map((bill) => (
+                  <TableRow key={bill.id}>
+                    <TableCell className="font-medium">{bill.billNumber}</TableCell>
+                    <TableCell>{new Date(bill.date).toLocaleDateString()}</TableCell>
+                    <TableCell>{bill.farmerName}</TableCell>
+                    <TableCell className="font-medium">₹{bill.amount.toLocaleString()}</TableCell>
+                    <TableCell>
+                      <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                        bill.status === 'Paid' 
+                          ? 'bg-green-100 text-green-800' 
+                          : 'bg-yellow-100 text-yellow-800'
+                      }`}>
+                        {bill.status}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-8 w-8" 
+                          title="Print"
+                          onClick={() => handlePrint(bill.id)}
+                        >
+                          <Printer className="h-4 w-4" />
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-8 w-8" 
+                          title="Send via WhatsApp"
+                          onClick={() => handleWhatsAppSend(bill.id)}
+                        >
+                          <MessageCircle className="h-4 w-4" />
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-8 w-8" 
+                          title="View Details"
+                        >
+                          <FileText className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          )}
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center py-6 text-muted-foreground">
+                    No bills found matching your search.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
         </CardContent>
       </Card>
 
       <div className="grid gap-6 md:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>Billing Summary</CardTitle>
-            <CardDescription>
-              Overview of current billing status.
-            </CardDescription>
+            <CardTitle>Bill Summary</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <div className="flex justify-between items-center pb-2 border-b">
-                <span className="text-muted-foreground">Total Bills</span>
-                <span className="font-semibold">{totalBills}</span>
+              <div className="flex justify-between">
+                <span>Total Bills Generated:</span>
+                <span className="font-medium">{mockBills.length}</span>
               </div>
-              <div className="flex justify-between items-center pb-2 border-b">
-                <span className="text-muted-foreground">Total Amount</span>
-                <span className="font-semibold">
-                  ₹{totalAmount.toLocaleString()}
-                </span>
+              <div className="flex justify-between">
+                <span>Total Amount:</span>
+                <span className="font-medium">₹{mockBills.reduce((sum, bill) => sum + bill.amount, 0).toLocaleString()}</span>
               </div>
-              <div className="flex justify-between items-center pb-2 border-b">
-                <span className="text-muted-foreground">Paid Amount</span>
-                <span className="font-semibold text-green-600">
-                  ₹{paidAmount.toLocaleString()}
-                </span>
+              <div className="flex justify-between">
+                <span>Paid Bills:</span>
+                <span className="font-medium text-green-600">{mockBills.filter(b => b.status === 'Paid').length}</span>
               </div>
-              <div className="flex justify-between items-center">
-                <span className="text-muted-foreground">Pending Amount</span>
-                <span className="font-semibold text-red-600">
-                  ₹{pendingAmount.toLocaleString()}
-                </span>
+              <div className="flex justify-between">
+                <span>Pending Bills:</span>
+                <span className="font-medium text-yellow-600">{mockBills.filter(b => b.status === 'Pending').length}</span>
               </div>
             </div>
           </CardContent>
@@ -339,58 +256,21 @@ const Billing = () => {
 
         <Card>
           <CardHeader>
-            <CardTitle>Printing Options</CardTitle>
-            <CardDescription>
-              Configure and manage printing settings for bills.
-            </CardDescription>
+            <CardTitle>Quick Actions</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex justify-between items-center p-3 bg-muted rounded-lg">
-                <div className="flex items-center gap-2">
-                  <Printer className="h-5 w-5 text-agri-green-600" />
-                  <div>
-                    <p className="font-medium">Thermal Printer</p>
-                    <p className="text-xs text-muted-foreground">Not connected</p>
-                  </div>
-                </div>
-                <Button variant="outline" size="sm">
-                  Connect
-                </Button>
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="paperSize">Paper Size</Label>
-                <Select defaultValue="58mm">
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="58mm">58mm</SelectItem>
-                    <SelectItem value="80mm">80mm</SelectItem>
-                    <SelectItem value="a4">A4</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="copies">Number of Copies</Label>
-                <Select defaultValue="1">
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="1">1</SelectItem>
-                    <SelectItem value="2">2</SelectItem>
-                    <SelectItem value="3">3</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <Button className="w-full bg-agri-green-500 hover:bg-agri-green-600">
-                Configure Printer Settings
-              </Button>
-            </div>
+          <CardContent className="space-y-4">
+            <Button className="w-full bg-agri-green-500 hover:bg-agri-green-600">
+              <FileText className="h-4 w-4 mr-2" />
+              Generate Bulk Bills
+            </Button>
+            <Button variant="outline" className="w-full">
+              <MessageCircle className="h-4 w-4 mr-2" />
+              Send Pending Reminders
+            </Button>
+            <Button variant="outline" className="w-full">
+              <Printer className="h-4 w-4 mr-2" />
+              Print All Pending
+            </Button>
           </CardContent>
         </Card>
       </div>
