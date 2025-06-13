@@ -9,14 +9,19 @@ interface StatsCardProps {
   description?: string;
   icon: LucideIcon;
   iconColor?: string;
+  trend?: {
+    value: number;
+    isPositive: boolean;
+  };
 }
 
-const StatsCard: React.FC<StatsCardProps> = ({ 
+export const StatsCard: React.FC<StatsCardProps> = ({ 
   title, 
   value, 
   description, 
   icon: Icon, 
-  iconColor = 'text-agri-green-500' 
+  iconColor = 'text-agri-green-500',
+  trend
 }) => {
   return (
     <Card>
@@ -29,6 +34,11 @@ const StatsCard: React.FC<StatsCardProps> = ({
         {description && (
           <p className="text-xs text-muted-foreground mt-1">
             {description}
+          </p>
+        )}
+        {trend && (
+          <p className={`text-xs mt-1 ${trend.isPositive ? 'text-green-600' : 'text-red-600'}`}>
+            {trend.isPositive ? '+' : '-'}{trend.value}%
           </p>
         )}
       </CardContent>
