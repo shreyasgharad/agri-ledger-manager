@@ -14,6 +14,12 @@ export const useRealtimeSubscription = ({
   onUpdate 
 }: UseRealtimeSubscriptionProps) => {
   const channelRef = useRef<any>(null);
+  const callbackRef = useRef(onUpdate);
+
+  // Update callback ref when it changes
+  useEffect(() => {
+    callbackRef.current = onUpdate;
+  }, [onUpdate]);
 
   useEffect(() => {
     // Clean up existing channel if it exists
@@ -22,9 +28,9 @@ export const useRealtimeSubscription = ({
       channelRef.current = null;
     }
 
-    // Create new channel
+    // Create new channel with unique name
     const channel = supabase
-      .channel(`${table}-changes-${Date.now()}`) // Add timestamp to make channel name unique
+      .channel(`${table}-changes-${Date.now()}`)
       .on(
         'postgres_changes',
         {
@@ -34,7 +40,8 @@ export const useRealtimeSubscription = ({
         },
         (payload) => {
           console.log(`Realtime update on ${table}:`, payload);
-          onUpdate();
+          // Use the ref to get the latest callback
+          callbackRef.current();
         }
       )
       .subscribe();
@@ -47,16 +54,5 @@ export const useRealtimeSubscription = ({
         channelRef.current = null;
       }
     };
-  }, [table, event]); // Removed onUpdate from dependencies to prevent unnecessary re-subscriptions
-
-  // Update the callback when it changes without re-subscribing
-  useEffect(() => {
-    // Store the latest callback in a ref that can be accessed by the subscription
-    const callbackRef = { current: onUpdate };
-    
-    if (channelRef.current) {
-      // Update the internal callback reference
-      channelRef.current.onUpdate = callbackRef.current;
-    }
-  }, [onUpdate]);
+  }, [table, event]); // Only depend on table and event, not onUpdate
 };
