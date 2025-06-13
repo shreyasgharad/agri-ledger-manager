@@ -4,12 +4,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
 export interface InventoryItem {
-  id: string;
+  id: number;
+  org_id: string;
   farmer_id: string;
   product: string;
-  given_bags: number;
-  returned_bags: number;
-  status: "Active" | "Completed";
+  bags_given: number;
+  bags_returned: number;
   created_at: string;
   updated_at: string;
   farmers?: {
@@ -40,10 +40,19 @@ export const useInventory = () => {
   });
 
   const addInventoryMutation = useMutation({
-    mutationFn: async (item: Omit<InventoryItem, "id" | "created_at" | "updated_at" | "farmers" | "returned_bags" | "status">) => {
+    mutationFn: async (item: Omit<InventoryItem, "id" | "created_at" | "updated_at" | "farmers" | "bags_returned" | "org_id">) => {
+      // Get user's org_id from their profile
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("org_id")
+        .eq("user_id", (await supabase.auth.getUser()).data.user?.id)
+        .single();
+
+      if (profileError) throw profileError;
+
       const { data, error } = await supabase
         .from("inventory")
-        .insert([item])
+        .insert([{ ...item, org_id: profile.org_id }])
         .select()
         .single();
       
@@ -67,7 +76,7 @@ export const useInventory = () => {
   });
 
   const updateInventoryMutation = useMutation({
-    mutationFn: async ({ id, ...updates }: Partial<InventoryItem> & { id: string }) => {
+    mutationFn: async ({ id, ...updates }: Partial<InventoryItem> & { id: number }) => {
       const { data, error } = await supabase
         .from("inventory")
         .update(updates)

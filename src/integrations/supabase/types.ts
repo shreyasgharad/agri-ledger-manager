@@ -9,68 +9,121 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      bills: {
+        Row: {
+          content: string
+          created_at: string
+          created_by: string | null
+          farmer_id: string
+          id: number
+          org_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          created_by?: string | null
+          farmer_id: string
+          id?: number
+          org_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          created_by?: string | null
+          farmer_id?: string
+          id?: number
+          org_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bills_farmer_id_fkey"
+            columns: ["farmer_id"]
+            isOneToOne: false
+            referencedRelation: "farmers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bills_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       farmers: {
         Row: {
-          address: string
+          address: string | null
           balance: number | null
           created_at: string
+          crop_type: string | null
           id: string
-          items: string
           name: string
+          org_id: string
           phone: string
           updated_at: string
         }
         Insert: {
-          address: string
+          address?: string | null
           balance?: number | null
           created_at?: string
+          crop_type?: string | null
           id?: string
-          items: string
           name: string
+          org_id: string
           phone: string
           updated_at?: string
         }
         Update: {
-          address?: string
+          address?: string | null
           balance?: number | null
           created_at?: string
+          crop_type?: string | null
           id?: string
-          items?: string
           name?: string
+          org_id?: string
           phone?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "farmers_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       inventory: {
         Row: {
+          bags_given: number
+          bags_returned: number
           created_at: string
           farmer_id: string
-          given_bags: number
-          id: string
+          id: number
+          org_id: string
           product: string
-          returned_bags: number
-          status: string
           updated_at: string
         }
         Insert: {
+          bags_given: number
+          bags_returned?: number
           created_at?: string
           farmer_id: string
-          given_bags?: number
-          id?: string
+          id?: number
+          org_id: string
           product: string
-          returned_bags?: number
-          status?: string
           updated_at?: string
         }
         Update: {
+          bags_given?: number
+          bags_returned?: number
           created_at?: string
           farmer_id?: string
-          given_bags?: number
-          id?: string
+          id?: number
+          org_id?: string
           product?: string
-          returned_bags?: number
-          status?: string
           updated_at?: string
         }
         Relationships: [
@@ -81,34 +134,100 @@ export type Database = {
             referencedRelation: "farmers"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "inventory_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organizations: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          settings: Json | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          settings?: Json | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          settings?: Json | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          org_id: string
+          role: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          org_id: string
+          role: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          org_id?: string
+          role?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profiles_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
         ]
       }
       transactions: {
         Row: {
           amount: number
           created_at: string
-          date: string
           farmer_id: string
-          id: string
-          notes: string | null
+          id: number
+          note: string | null
+          org_id: string
+          trans_date: string | null
           type: string
         }
         Insert: {
           amount: number
           created_at?: string
-          date?: string
           farmer_id: string
-          id?: string
-          notes?: string | null
+          id?: number
+          note?: string | null
+          org_id: string
+          trans_date?: string | null
           type: string
         }
         Update: {
           amount?: number
           created_at?: string
-          date?: string
           farmer_id?: string
-          id?: string
-          notes?: string | null
+          id?: number
+          note?: string | null
+          org_id?: string
+          trans_date?: string | null
           type?: string
         }
         Relationships: [
@@ -119,6 +238,13 @@ export type Database = {
             referencedRelation: "farmers"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "transactions_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
         ]
       }
     }
@@ -126,7 +252,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_user_org_id: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      is_admin: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never

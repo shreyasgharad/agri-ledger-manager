@@ -16,7 +16,7 @@ const Farmers = () => {
     name: "",
     phone: "",
     address: "",
-    items: "",
+    crop_type: "",
   });
 
   const { farmers, isLoading, addFarmer, deleteFarmer, isAddingFarmer } = useFarmers();
@@ -25,7 +25,7 @@ const Farmers = () => {
     (farmer) =>
       farmer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       farmer.phone.includes(searchTerm) ||
-      farmer.address.toLowerCase().includes(searchTerm.toLowerCase())
+      (farmer.address && farmer.address.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -34,7 +34,7 @@ const Farmers = () => {
   };
 
   const handleAddFarmer = () => {
-    if (!newFarmer.name || !newFarmer.phone || !newFarmer.address || !newFarmer.items) {
+    if (!newFarmer.name || !newFarmer.phone) {
       return;
     }
     
@@ -44,7 +44,7 @@ const Farmers = () => {
       name: "",
       phone: "",
       address: "",
-      items: "",
+      crop_type: "",
     });
   };
 
@@ -107,13 +107,13 @@ const Farmers = () => {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="items">Items</Label>
+                <Label htmlFor="crop_type">Crop Type</Label>
                 <Input
-                  id="items"
-                  name="items"
-                  value={newFarmer.items}
+                  id="crop_type"
+                  name="crop_type"
+                  value={newFarmer.crop_type}
                   onChange={handleInputChange}
-                  placeholder="Enter items (comma separated)"
+                  placeholder="Enter crop type"
                 />
               </div>
             </div>
@@ -156,7 +156,7 @@ const Farmers = () => {
                 <TableHead>Name</TableHead>
                 <TableHead>Phone</TableHead>
                 <TableHead>Address</TableHead>
-                <TableHead>Items</TableHead>
+                <TableHead>Crop Type</TableHead>
                 <TableHead>Balance</TableHead>
                 <TableHead className="w-[100px]">Actions</TableHead>
               </TableRow>
@@ -167,16 +167,16 @@ const Farmers = () => {
                   <TableRow key={farmer.id}>
                     <TableCell className="font-medium">{farmer.name}</TableCell>
                     <TableCell>{farmer.phone}</TableCell>
-                    <TableCell>{farmer.address}</TableCell>
-                    <TableCell>{farmer.items}</TableCell>
+                    <TableCell>{farmer.address || "-"}</TableCell>
+                    <TableCell>{farmer.crop_type || "-"}</TableCell>
                     <TableCell className={`font-medium ${
-                      farmer.balance > 0 
+                      (farmer.balance || 0) > 0 
                         ? "text-green-600" 
-                        : farmer.balance < 0 
+                        : (farmer.balance || 0) < 0 
                         ? "text-red-600" 
                         : ""
                     }`}>
-                      {farmer.balance > 0 ? "+" : ""}₹{farmer.balance.toLocaleString()}
+                      {(farmer.balance || 0) > 0 ? "+" : ""}₹{(farmer.balance || 0).toLocaleString()}
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">

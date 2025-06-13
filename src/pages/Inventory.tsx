@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,14 +17,14 @@ const Inventory = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isUpdateDialogOpen, setIsUpdateDialogOpen] = useState(false);
-  const [selectedInventory, setSelectedInventory] = useState<string | null>(null);
+  const [selectedInventory, setSelectedInventory] = useState<number | null>(null);
   const [newInventory, setNewInventory] = useState({
     farmer_id: "",
     product: "",
-    given_bags: "",
+    bags_given: "",
   });
   const [bagReturn, setBagReturn] = useState({
-    returned_bags: "",
+    bags_returned: "",
   });
 
   const { inventory, isLoading, addInventory, updateInventory, isAddingInventory, isUpdatingInventory } = useInventory();
@@ -34,8 +33,7 @@ const Inventory = () => {
   const filteredInventory = inventory.filter(
     (item) =>
       (item.farmers?.name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.product.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.status.toLowerCase().includes(searchTerm.toLowerCase())
+      item.product.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -53,49 +51,47 @@ const Inventory = () => {
   };
 
   const handleAddInventory = () => {
-    if (!newInventory.farmer_id || !newInventory.product || !newInventory.given_bags) {
+    if (!newInventory.farmer_id || !newInventory.product || !newInventory.bags_given) {
       return;
     }
 
     addInventory({
       farmer_id: newInventory.farmer_id,
       product: newInventory.product,
-      given_bags: parseInt(newInventory.given_bags),
+      bags_given: parseInt(newInventory.bags_given),
     });
 
     setIsAddDialogOpen(false);
     setNewInventory({
       farmer_id: "",
       product: "",
-      given_bags: "",
+      bags_given: "",
     });
   };
 
   const handleUpdateInventory = () => {
-    if (!selectedInventory || !bagReturn.returned_bags) {
+    if (selectedInventory === null || !bagReturn.bags_returned) {
       return;
     }
 
     const selectedItem = inventory.find(item => item.id === selectedInventory);
     if (!selectedItem) return;
 
-    const newReturnedBags = parseInt(bagReturn.returned_bags);
-    const newStatus = newReturnedBags >= selectedItem.given_bags ? "Completed" : "Active";
+    const newReturnedBags = parseInt(bagReturn.bags_returned);
 
     updateInventory({
       id: selectedInventory,
-      returned_bags: newReturnedBags,
-      status: newStatus,
+      bags_returned: newReturnedBags,
     });
 
     setIsUpdateDialogOpen(false);
     setBagReturn({
-      returned_bags: "",
+      bags_returned: "",
     });
     setSelectedInventory(null);
   };
 
-  const openUpdateDialog = (inventoryId: string) => {
+  const openUpdateDialog = (inventoryId: number) => {
     setSelectedInventory(inventoryId);
     setIsUpdateDialogOpen(true);
   };
@@ -159,11 +155,11 @@ const Inventory = () => {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="given_bags">Number of Bags</Label>
+                <Label htmlFor="bags_given">Number of Bags</Label>
                 <Input
-                  id="given_bags"
-                  name="given_bags"
-                  value={newInventory.given_bags}
+                  id="bags_given"
+                  name="bags_given"
+                  value={newInventory.bags_given}
                   onChange={handleInputChange}
                   placeholder="Enter number of bags"
                   type="number"
@@ -186,7 +182,6 @@ const Inventory = () => {
         </Dialog>
       </div>
 
-      {/* Update Bags Dialog */}
       <Dialog open={isUpdateDialogOpen} onOpenChange={setIsUpdateDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -197,11 +192,11 @@ const Inventory = () => {
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-2">
-              <Label htmlFor="returned_bags">Number of Bags Returned</Label>
+              <Label htmlFor="bags_returned">Number of Bags Returned</Label>
               <Input
-                id="returned_bags"
-                name="returned_bags"
-                value={bagReturn.returned_bags}
+                id="bags_returned"
+                name="bags_returned"
+                value={bagReturn.bags_returned}
                 onChange={handleReturnInputChange}
                 placeholder="Enter number of bags"
                 type="number"
@@ -248,7 +243,6 @@ const Inventory = () => {
                 <TableHead>Given</TableHead>
                 <TableHead>Returned</TableHead>
                 <TableHead>Pending</TableHead>
-                <TableHead>Status</TableHead>
                 <TableHead>Progress</TableHead>
                 <TableHead className="w-[100px]">Actions</TableHead>
               </TableRow>
@@ -259,26 +253,17 @@ const Inventory = () => {
                   <TableRow key={item.id}>
                     <TableCell className="font-medium">{item.farmers?.name}</TableCell>
                     <TableCell>{item.product}</TableCell>
-                    <TableCell>{item.given_bags}</TableCell>
-                    <TableCell>{item.returned_bags}</TableCell>
-                    <TableCell>{item.given_bags - item.returned_bags}</TableCell>
-                    <TableCell>
-                      <div className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-                        item.status === "Completed"
-                          ? "bg-green-100 text-green-800"
-                          : "bg-blue-100 text-blue-800"
-                      }`}>
-                        {item.status}
-                      </div>
-                    </TableCell>
+                    <TableCell>{item.bags_given}</TableCell>
+                    <TableCell>{item.bags_returned}</TableCell>
+                    <TableCell>{item.bags_given - item.bags_returned}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <Progress 
-                          value={(item.returned_bags / item.given_bags) * 100} 
+                          value={(item.bags_returned / item.bags_given) * 100} 
                           className="h-2" 
                         />
                         <span className="text-xs text-muted-foreground">
-                          {Math.round((item.returned_bags / item.given_bags) * 100)}%
+                          {Math.round((item.bags_returned / item.bags_given) * 100)}%
                         </span>
                       </div>
                     </TableCell>
@@ -286,8 +271,8 @@ const Inventory = () => {
                       <Button 
                         variant="ghost" 
                         size="sm" 
-                        className={`${item.status === "Completed" ? "opacity-50 cursor-not-allowed" : ""}`}
-                        disabled={item.status === "Completed"}
+                        className={`${item.bags_returned >= item.bags_given ? "opacity-50 cursor-not-allowed" : ""}`}
+                        disabled={item.bags_returned >= item.bags_given}
                         onClick={() => openUpdateDialog(item.id)}
                       >
                         <Package className="h-4 w-4 mr-1" /> Update
@@ -297,7 +282,7 @@ const Inventory = () => {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-6 text-muted-foreground">
+                  <TableCell colSpan={7} className="text-center py-6 text-muted-foreground">
                     No inventory records found matching your search.
                   </TableCell>
                 </TableRow>
@@ -321,7 +306,7 @@ const Inventory = () => {
               <div className="flex items-center gap-2">
                 <Package className="h-5 w-5 text-agri-green-500" />
                 <span className="text-2xl font-bold">
-                  {inventory.reduce((acc, curr) => acc + curr.given_bags, 0)}
+                  {inventory.reduce((acc, curr) => acc + curr.bags_given, 0)}
                 </span>
               </div>
             </div>
@@ -331,7 +316,7 @@ const Inventory = () => {
               <div className="flex items-center gap-2">
                 <ArrowRight className="h-5 w-5 text-agri-brown-500" />
                 <span className="text-2xl font-bold">
-                  {inventory.reduce((acc, curr) => acc + curr.returned_bags, 0)}
+                  {inventory.reduce((acc, curr) => acc + curr.bags_returned, 0)}
                 </span>
               </div>
             </div>
@@ -341,7 +326,7 @@ const Inventory = () => {
               <div className="flex items-center gap-2">
                 <Package className="h-5 w-5 text-red-500" />
                 <span className="text-2xl font-bold">
-                  {inventory.reduce((acc, curr) => acc + (curr.given_bags - curr.returned_bags), 0)}
+                  {inventory.reduce((acc, curr) => acc + (curr.bags_given - curr.bags_returned), 0)}
                 </span>
               </div>
             </div>

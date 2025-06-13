@@ -4,12 +4,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
 export interface Transaction {
-  id: string;
+  id: number;
+  org_id: string;
   farmer_id: string;
   type: "Given" | "Received";
   amount: number;
-  notes: string | null;
-  date: string;
+  note: string | null;
+  trans_date: string | null;
   created_at: string;
   farmers?: {
     name: string;
@@ -39,10 +40,23 @@ export const useTransactions = () => {
   });
 
   const addTransactionMutation = useMutation({
-    mutationFn: async (transaction: Omit<Transaction, "id" | "created_at" | "farmers">) => {
+    mutationFn: async (transaction: Omit<Transaction, "id" | "created_at" | "farmers" | "org_id">) => {
+      // Get user's org_id from their profile
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("org_id")
+        .eq("user_id", (await supabase.auth.getUser()).data.user?.id)
+        .single();
+
+      if (profileError) throw profileError;
+
       const { data, error } = await supabase
         .from("transactions")
-        .insert([transaction])
+        .insert([{ 
+          ...transaction, 
+          org_id: profile.org_id,
+          trans_date: transaction.trans_date || new Date().toISOString()
+        }])
         .select()
         .single();
       

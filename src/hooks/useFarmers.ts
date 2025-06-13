@@ -5,11 +5,12 @@ import { useToast } from "@/hooks/use-toast";
 
 export interface Farmer {
   id: string;
+  org_id: string;
   name: string;
   phone: string;
-  address: string;
-  items: string;
-  balance: number;
+  address: string | null;
+  crop_type: string | null;
+  balance: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -37,10 +38,19 @@ export const useFarmers = () => {
   });
 
   const addFarmerMutation = useMutation({
-    mutationFn: async (farmer: Omit<Farmer, "id" | "created_at" | "updated_at" | "balance">) => {
+    mutationFn: async (farmer: Omit<Farmer, "id" | "created_at" | "updated_at" | "balance" | "org_id">) => {
+      // Get user's org_id from their profile
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("org_id")
+        .eq("user_id", (await supabase.auth.getUser()).data.user?.id)
+        .single();
+
+      if (profileError) throw profileError;
+
       const { data, error } = await supabase
         .from("farmers")
-        .insert([farmer])
+        .insert([{ ...farmer, org_id: profile.org_id }])
         .select()
         .single();
       

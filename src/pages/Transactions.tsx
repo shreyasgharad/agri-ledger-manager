@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,8 +19,8 @@ const Transactions = () => {
     farmer_id: "",
     type: "" as "Given" | "Received" | "",
     amount: "",
-    notes: "",
-    date: new Date().toISOString().split('T')[0],
+    note: "",
+    trans_date: new Date().toISOString().split('T')[0],
   });
 
   const { transactions, isLoading, addTransaction, isAddingTransaction } = useTransactions();
@@ -32,7 +31,7 @@ const Transactions = () => {
       const farmerName = transaction.farmers?.name || "";
       const matchesSearch =
         farmerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (transaction.notes && transaction.notes.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (transaction.note && transaction.note.toLowerCase().includes(searchTerm.toLowerCase())) ||
         transaction.amount.toString().includes(searchTerm);
       
       if (activeTab === "given") {
@@ -63,8 +62,8 @@ const Transactions = () => {
       farmer_id: newTransaction.farmer_id,
       type: newTransaction.type as "Given" | "Received",
       amount: parseFloat(newTransaction.amount),
-      notes: newTransaction.notes || null,
-      date: newTransaction.date,
+      note: newTransaction.note || null,
+      trans_date: newTransaction.trans_date,
     });
 
     setIsAddDialogOpen(false);
@@ -72,8 +71,8 @@ const Transactions = () => {
       farmer_id: "",
       type: "",
       amount: "",
-      notes: "",
-      date: new Date().toISOString().split('T')[0],
+      note: "",
+      trans_date: new Date().toISOString().split('T')[0],
     });
   };
 
@@ -144,21 +143,21 @@ const Transactions = () => {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="date">Date</Label>
+                <Label htmlFor="trans_date">Date</Label>
                 <Input
-                  id="date"
-                  name="date"
-                  value={newTransaction.date}
+                  id="trans_date"
+                  name="trans_date"
+                  value={newTransaction.trans_date}
                   onChange={handleInputChange}
                   type="date"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="notes">Notes</Label>
+                <Label htmlFor="note">Notes</Label>
                 <Input
-                  id="notes"
-                  name="notes"
-                  value={newTransaction.notes}
+                  id="note"
+                  name="note"
+                  value={newTransaction.note}
                   onChange={handleInputChange}
                   placeholder="Optional notes about this transaction"
                 />
@@ -225,7 +224,7 @@ const Transactions = () => {
               {filteredTransactions.length > 0 ? (
                 filteredTransactions.map((transaction) => (
                   <TableRow key={transaction.id}>
-                    <TableCell>{new Date(transaction.date).toLocaleDateString()}</TableCell>
+                    <TableCell>{new Date(transaction.trans_date || transaction.created_at).toLocaleDateString()}</TableCell>
                     <TableCell className="font-medium">{transaction.farmers?.name}</TableCell>
                     <TableCell>
                       <div className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${
@@ -248,7 +247,7 @@ const Transactions = () => {
                     }`}>
                       {transaction.type === "Received" ? "+" : "-"}₹{transaction.amount.toLocaleString()}
                     </TableCell>
-                    <TableCell className="text-muted-foreground">{transaction.notes}</TableCell>
+                    <TableCell className="text-muted-foreground">{transaction.note}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <Button variant="ghost" size="icon" className="h-8 w-8" title="Print Receipt">
