@@ -1,5 +1,7 @@
 # 23 Lovable Prompts for AgriAggregator
 
+> **Status:** superseded. Because Lovable's free plan allows only ~3 prompts a day, the database (prompts 1-11) and the core screens (13-21) were built directly in this repo instead: see `supabase/migrations/20261011000000_agri_aggregator_schema.sql` and `src/pages/`. Remaining items from this list: 12 (full visual theme/i18n), 22 (reports, CSV import/export), 23 (PWA, form validation).
+
 Paste **one at a time, in order**. Wait for each to finish and check the preview before the next. Prompts 1–11 are database (use Lovable Cloud / Supabase migrations); 12–23 are UI/UX. Always tell Lovable: *"Do not break existing features; show me the migration before running it."*
 
 **Global context – set once as Project Knowledge** (Lovable → Project settings → Knowledge):
