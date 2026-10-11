@@ -94,3 +94,20 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Printing: show only the bill */
+@media print {
+  .print-hidden,
+  header,
+  [data-sidebar="sidebar"],
+  [data-sidebar="trigger"],
+  .toaster,
+  [role="region"][aria-label^="Notifications"] {
+    display: none !important;
+  }
+  body { background: #fff !important; }
+  main, .container { padding: 0 !important; margin: 0 !important; max-width: none !important; overflow: visible !important; }
+  .print-area { border: 0 !important; box-shadow: none !important; margin: 0 auto !important; }
+  .paper-thermal { max-width: 80mm !important; }
+  @page { margin: 8mm; }
+}

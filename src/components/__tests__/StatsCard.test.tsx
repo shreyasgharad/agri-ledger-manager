@@ -1,12 +1,13 @@
 
 import React from 'react';
+import { describe, it, expect, vi } from 'vitest';
 import { render } from '@testing-library/react';
-import '@testing-library/jest-dom';
+
 import StatsCard from '../dashboard/StatsCard';
 import { Users } from 'lucide-react';
 
 // Mock the lucide-react icon
-jest.mock('lucide-react', () => ({
+vi.mock('lucide-react', () => ({
   Users: () => <div data-testid="users-icon">Users Icon</div>,
 }));
 

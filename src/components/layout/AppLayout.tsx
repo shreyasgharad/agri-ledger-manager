@@ -3,6 +3,7 @@ import React from 'react';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { AppSidebar } from './AppSidebar';
 import Header from './Header';
+import { BottomNav } from './BottomNav';
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -15,13 +16,14 @@ export function AppLayout({ children }: AppLayoutProps) {
         <AppSidebar />
         <div className="flex-1 flex flex-col">
           <Header />
-          <main className="flex-1 overflow-auto">
+          <main className="flex-1 overflow-auto pb-20 md:pb-0">
             <div className="container p-4 md:p-6 max-w-7xl">
               {children}
             </div>
           </main>
         </div>
       </div>
+      <BottomNav />
     </SidebarProvider>
   );
 }

@@ -1,7 +1,6 @@
 
 import React from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { useAuth } from '@/hooks/useAuth';
 import {
   Sidebar,
   SidebarContent,
@@ -13,47 +12,54 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from '@/components/ui/sidebar';
-import { 
-  Home, 
-  Users, 
-  FileText, 
-  Package, 
-  Receipt, 
-  Database, 
+import {
+  Home,
+  Users,
+  UserCheck,
+  Layers,
+  Wallet,
+  FileText,
+  Package,
+  Receipt,
+  Database,
   Settings,
   BarChart3,
   UserCircle
 } from 'lucide-react';
 
 const navigationItems = [
-  // Core Modules
+  // Daily work
   { title: 'Dashboard', url: '/', icon: Home, group: 'core' },
-  { title: 'Farmers', url: '/farmers', icon: Users, group: 'core' },
-  { title: 'Transactions', url: '/transactions', icon: FileText, group: 'core' },
-  { title: 'Inventory', url: '/inventory', icon: Package, group: 'core' },
-  { title: 'Billing', url: '/billing', icon: Receipt, group: 'core' },
-  
-  // Analytics & Reports (Future)
+  { title: 'Lots', url: '/lots', icon: Layers, group: 'core' },
+  { title: 'Bills', url: '/bills', icon: Receipt, group: 'core' },
+  { title: 'Advances', url: '/advances', icon: Wallet, group: 'core' },
+
+  // People
+  { title: 'Farmers', url: '/farmers', icon: Users, group: 'people' },
+  { title: 'Buyers', url: '/buyers', icon: UserCheck, group: 'people' },
+
+  // Older ledger modules
+  { title: 'Transactions', url: '/transactions', icon: FileText, group: 'ledger' },
+  { title: 'Inventory', url: '/inventory', icon: Package, group: 'ledger' },
+
+  // Future
   { title: 'Reports', url: '/reports', icon: BarChart3, group: 'analytics', disabled: true },
-  
-  // Customer Portal (Future)
   { title: 'Farmer Portal', url: '/farmer-portal', icon: UserCircle, group: 'portal', disabled: true },
-  
-  // Admin Only
-  { title: 'Data Management', url: '/data', icon: Database, adminOnly: true, group: 'admin' },
-  { title: 'Settings', url: '/settings', icon: Settings, adminOnly: true, group: 'admin' },
+
+  // Admin (no login yet, so always visible)
+  { title: 'Data Management', url: '/data', icon: Database, group: 'admin' },
+  { title: 'Settings', url: '/settings', icon: Settings, group: 'admin' },
 ];
 
 export function AppSidebar() {
   const { state } = useSidebar();
   const location = useLocation();
-  const { isAdmin } = useAuth();
   const currentPath = location.pathname;
 
   const getNavCls = ({ isActive }: { isActive: boolean }) =>
     isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : 'hover:bg-sidebar-accent/50';
 
-  const filteredItems = navigationItems.filter(item => !item.adminOnly || isAdmin);
+  const filteredItems = navigationItems;
 
   const groupedItems = filteredItems.reduce((acc, item) => {
     if (!acc[item.group]) acc[item.group] = [];
@@ -63,7 +69,9 @@ export function AppSidebar() {
 
   const getGroupLabel = (group: string) => {
     switch (group) {
-      case 'core': return 'Core Modules';
+      case 'core': return 'Daily work';
+      case 'people': return 'People';
+      case 'ledger': return 'Old ledger';
       case 'analytics': return 'Analytics';
       case 'portal': return 'Customer Portal';
       case 'admin': return 'Administration';

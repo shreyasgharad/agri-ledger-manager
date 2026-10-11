@@ -1,6 +1,6 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { db } from "@/integrations/supabase/untyped";
 import { useToast } from "@/hooks/use-toast";
 import { useRealtimeSubscription } from "./useRealtimeSubscription";
 import { useAuth } from "./useAuth";
@@ -13,7 +13,11 @@ export interface Farmer {
   phone: string;
   address: string | null;
   crop_type: string | null;
-  balance: number | null;
+  code: string | null;
+  notes: string | null;
+  village_id: string | null;
+  is_active: boolean;
+  villages?: { name: string } | null;
   created_at: string;
   updated_at: string;
 }
@@ -32,14 +36,15 @@ export const useFarmers = () => {
   } = useQuery({
     queryKey: ["farmers", orgId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from("farmers")
-        .select("*")
+        .select("*, villages(name)")
         .eq("org_id", orgId)
-        .order("created_at", { ascending: false });
+        .is("deleted_at", null)
+        .order("name", { ascending: true });
 
       if (error) throw error;
-      return data as Farmer[];
+      return data as unknown as Farmer[];
     },
   });
 
@@ -48,11 +53,40 @@ export const useFarmers = () => {
 
   const addFarmerMutation = useMutation({
     mutationFn: async (
-      farmer: Omit<Farmer, "id" | "created_at" | "updated_at" | "balance" | "org_id">
+      input: {
+        name: string;
+        phone: string;
+        address?: string | null;
+        crop_type?: string | null;
+        notes?: string | null;
+        village_name?: string;
+      }
     ) => {
-      const { data, error } = await supabase
+      const { village_name, ...farmer } = input;
+      let village_id: string | null = null;
+      const villageName = village_name?.trim();
+      if (villageName) {
+        const { data: existing } = await db
+          .from("villages")
+          .select("id")
+          .ilike("name", villageName)
+          .is("deleted_at", null)
+          .maybeSingle();
+        if (existing) {
+          village_id = existing.id;
+        } else {
+          const { data: created, error: villageError } = await db
+            .from("villages")
+            .insert([{ name: villageName, org_id: orgId }])
+            .select("id")
+            .single();
+          if (villageError) throw villageError;
+          village_id = created.id;
+        }
+      }
+      const { data, error } = await db
         .from("farmers")
-        .insert([{ ...farmer, org_id: orgId, balance: 0 }])
+        .insert([{ ...farmer, village_id, org_id: orgId }])
         .select()
         .single();
 
@@ -77,7 +111,7 @@ export const useFarmers = () => {
 
   const updateFarmerMutation = useMutation({
     mutationFn: async ({ id, ...updates }: Partial<Farmer> & { id: string }) => {
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from("farmers")
         .update(updates)
         .eq("id", id)
@@ -106,9 +140,9 @@ export const useFarmers = () => {
 
   const deleteFarmerMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
+      const { error } = await db
         .from("farmers")
-        .delete()
+        .update({ deleted_at: new Date().toISOString() })
         .eq("id", id)
         .eq("org_id", orgId);
 
