@@ -1,40 +1,18 @@
-
-import React from 'react';
-import { useAuth } from '@/hooks/useAuth';
+import { Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { LogOut, Menu } from 'lucide-react';
 import { useSidebar } from '@/components/ui/sidebar';
 
+// Single-user mode: no login, so no avatar or sign-out here. When authentication is
+// enabled later, re-add the user menu from useAuth().
 const Header = () => {
-  const { user, organization, signOut } = useAuth();
   const { toggleSidebar } = useSidebar();
 
-  const orgName = organization?.settings?.name || organization?.name || 'AgriLedger';
-  const userInitials = user?.email?.charAt(0).toUpperCase() || 'U';
-
   return (
-    <header className="h-16 border-b bg-white flex items-center justify-between px-4">
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={toggleSidebar} className="md:hidden">
-          <Menu className="h-5 w-5" />
-        </Button>
-        <h1 className="text-xl font-semibold text-agri-green-700">{orgName}</h1>
-      </div>
-      
-      <div className="flex items-center gap-4">
-        <div className="flex items-center gap-2">
-          <Avatar className="h-8 w-8">
-            <AvatarFallback className="bg-agri-green-100 text-agri-green-700">
-              {userInitials}
-            </AvatarFallback>
-          </Avatar>
-          <span className="text-sm text-gray-600 hidden sm:block">{user?.email}</span>
-        </div>
-        <Button variant="ghost" size="icon" onClick={signOut}>
-          <LogOut className="h-4 w-4" />
-        </Button>
-      </div>
+    <header className="h-14 md:h-16 border-b bg-white flex items-center px-4 gap-3 sticky top-0 z-30">
+      <Button variant="ghost" size="icon" onClick={toggleSidebar} className="md:hidden h-10 w-10" aria-label="Open menu">
+        <Menu className="h-5 w-5" />
+      </Button>
+      <h1 className="text-lg md:text-xl font-semibold text-agri-green-700">AgriAggregator</h1>
     </header>
   );
 };

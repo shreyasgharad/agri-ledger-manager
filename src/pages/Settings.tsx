@@ -1,294 +1,95 @@
+import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useSettings } from "@/hooks/useAgri";
 
-import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Switch } from '@/components/ui/switch';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Building, MessageCircle, Users, Save } from 'lucide-react';
-import { useAuth } from '@/hooks/useAuth';
-import { useToast } from '@/hooks/use-toast';
+const COMMISSIONS = ["1", "1.25", "1.5", "1.75", "2"];
 
 const Settings = () => {
-  const { organization, profile } = useAuth();
-  const { toast } = useToast();
-  
-  const [businessInfo, setBusinessInfo] = useState({
-    name: organization?.settings?.name || organization?.name || '',
-    address: organization?.settings?.address || '',
-    gstin: organization?.settings?.gstin || '',
-    email: organization?.settings?.email || '',
-    phone: organization?.settings?.phone || '',
+  const { settings, isLoading, save, isSaving } = useSettings();
+  const [form, setForm] = useState({
+    business_name: "",
+    address: "",
+    phone: "",
+    gstin: "",
+    bill_footer: "",
+    default_farmer_commission: "1.5",
+    default_buyer_commission: "1.5",
   });
 
-  const [whatsappSettings, setWhatsappSettings] = useState({
-    enabled: organization?.settings?.integrations?.whatsapp?.enabled || false,
-    apiUrl: organization?.settings?.integrations?.whatsapp?.apiUrl || '',
-    token: organization?.settings?.integrations?.whatsapp?.token || '',
-  });
-
-  // Mock user data - will be replaced with real Supabase query
-  const mockUsers = [
-    {
-      id: '1',
-      email: 'admin@example.com',
-      role: 'admin',
-      created_at: '2025-01-01',
-    },
-    {
-      id: '2',
-      email: 'employee@example.com',
-      role: 'employee',
-      created_at: '2025-01-05',
-    }
-  ];
-
-  const handleSaveBusinessInfo = async () => {
-    try {
-      // In a real implementation, this would update the organization settings in Supabase
-      console.log('Saving business info:', businessInfo);
-      
-      toast({
-        title: 'Success',
-        description: 'Business information updated successfully!',
-      });
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to update business information.',
-        variant: 'destructive',
+  useEffect(() => {
+    if (settings) {
+      setForm({
+        business_name: settings.business_name ?? "",
+        address: settings.address ?? "",
+        phone: settings.phone ?? "",
+        gstin: settings.gstin ?? "",
+        bill_footer: settings.bill_footer ?? "",
+        default_farmer_commission: String(settings.default_farmer_commission ?? 1.5),
+        default_buyer_commission: String(settings.default_buyer_commission ?? 1.5),
       });
     }
-  };
+  }, [settings]);
 
-  const handleSaveWhatsAppSettings = async () => {
-    try {
-      // In a real implementation, this would update the WhatsApp settings in Supabase
-      console.log('Saving WhatsApp settings:', whatsappSettings);
-      
-      toast({
-        title: 'Success',
-        description: 'WhatsApp settings updated successfully!',
-      });
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to update WhatsApp settings.',
-        variant: 'destructive',
-      });
-    }
-  };
+  const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, [k]: e.target.value });
+
+  const submit = () =>
+    save({
+      business_name: form.business_name.trim() || "My Agri Business",
+      address: form.address || null,
+      phone: form.phone || null,
+      gstin: form.gstin || null,
+      bill_footer: form.bill_footer || null,
+      default_farmer_commission: Number(form.default_farmer_commission),
+      default_buyer_commission: Number(form.default_buyer_commission),
+    });
+
+  if (isLoading) return <p className="py-10 text-center text-muted-foreground">Loading settings...</p>;
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-agri-green-700">Settings</h1>
+    <div className="space-y-4 max-w-2xl">
+      <div>
+        <h1 className="text-2xl md:text-3xl font-bold text-agri-green-700">Settings</h1>
+        <p className="text-sm text-muted-foreground">These details appear at the top and bottom of every printed bill.</p>
       </div>
 
-      <Tabs defaultValue="business" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="business">Business Info</TabsTrigger>
-          <TabsTrigger value="integrations">Integrations</TabsTrigger>
-          <TabsTrigger value="users">User Management</TabsTrigger>
-        </TabsList>
+      <Card>
+        <CardHeader><CardTitle>Business</CardTitle></CardHeader>
+        <CardContent className="space-y-3">
+          <div className="space-y-1"><Label>Business name</Label><Input className="h-12" value={form.business_name} onChange={set("business_name")} /></div>
+          <div className="space-y-1"><Label>Address</Label><Input className="h-12" value={form.address} onChange={set("address")} /></div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1"><Label>Phone</Label><Input className="h-12" inputMode="tel" value={form.phone} onChange={set("phone")} /></div>
+            <div className="space-y-1"><Label>GSTIN (optional)</Label><Input className="h-12" value={form.gstin} onChange={set("gstin")} /></div>
+          </div>
+          <div className="space-y-1"><Label>Bill footer</Label><Input className="h-12" value={form.bill_footer} onChange={set("bill_footer")} placeholder="e.g. Thank you for your business" /></div>
+        </CardContent>
+      </Card>
 
-        <TabsContent value="business" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Building className="h-5 w-5" />
-                Business Information
-              </CardTitle>
-              <CardDescription>
-                Manage your organization's basic information and details.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="business-name">Business Name</Label>
-                  <Input
-                    id="business-name"
-                    value={businessInfo.name}
-                    onChange={(e) => setBusinessInfo({...businessInfo, name: e.target.value})}
-                    placeholder="Enter business name"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="business-email">Email</Label>
-                  <Input
-                    id="business-email"
-                    type="email"
-                    value={businessInfo.email}
-                    onChange={(e) => setBusinessInfo({...businessInfo, email: e.target.value})}
-                    placeholder="Enter business email"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="business-phone">Phone</Label>
-                  <Input
-                    id="business-phone"
-                    value={businessInfo.phone}
-                    onChange={(e) => setBusinessInfo({...businessInfo, phone: e.target.value})}
-                    placeholder="Enter business phone"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="business-gstin">GSTIN</Label>
-                  <Input
-                    id="business-gstin"
-                    value={businessInfo.gstin}
-                    onChange={(e) => setBusinessInfo({...businessInfo, gstin: e.target.value})}
-                    placeholder="Enter GSTIN number"
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="business-address">Address</Label>
-                <Textarea
-                  id="business-address"
-                  value={businessInfo.address}
-                  onChange={(e) => setBusinessInfo({...businessInfo, address: e.target.value})}
-                  placeholder="Enter complete business address"
-                  rows={3}
-                />
-              </div>
-              <Button onClick={handleSaveBusinessInfo} className="bg-agri-green-500 hover:bg-agri-green-600">
-                <Save className="h-4 w-4 mr-2" />
-                Save Business Info
-              </Button>
-            </CardContent>
-          </Card>
-        </TabsContent>
+      <Card>
+        <CardHeader>
+          <CardTitle>Default commission</CardTitle>
+          <CardDescription>Applied when issuing bills; you can still change it per lot (0–2%).</CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-3 sm:grid-cols-2">
+          {(["default_farmer_commission", "default_buyer_commission"] as const).map((k) => (
+            <div key={k} className="space-y-1">
+              <Label>{k === "default_farmer_commission" ? "Farmer" : "Buyer"} %</Label>
+              <Select value={form[k]} onValueChange={(v) => setForm({ ...form, [k]: v })}>
+                <SelectTrigger className="h-12"><SelectValue /></SelectTrigger>
+                <SelectContent>{COMMISSIONS.map((c) => <SelectItem key={c} value={c}>{c}%</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
 
-        <TabsContent value="integrations" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <MessageCircle className="h-5 w-5" />
-                WhatsApp Integration
-              </CardTitle>
-              <CardDescription>
-                Configure WhatsApp API settings for sending bills and notifications.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label>Enable WhatsApp Integration</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Allow sending bills and notifications via WhatsApp
-                  </p>
-                </div>
-                <Switch
-                  checked={whatsappSettings.enabled}
-                  onCheckedChange={(checked) => 
-                    setWhatsappSettings({...whatsappSettings, enabled: checked})
-                  }
-                />
-              </div>
-              
-              {whatsappSettings.enabled && (
-                <div className="space-y-4 pt-4 border-t">
-                  <div className="space-y-2">
-                    <Label htmlFor="whatsapp-api-url">API URL</Label>
-                    <Input
-                      id="whatsapp-api-url"
-                      value={whatsappSettings.apiUrl}
-                      onChange={(e) => setWhatsappSettings({...whatsappSettings, apiUrl: e.target.value})}
-                      placeholder="Enter WhatsApp API URL"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="whatsapp-token">API Token</Label>
-                    <Input
-                      id="whatsapp-token"
-                      type="password"
-                      value={whatsappSettings.token}
-                      onChange={(e) => setWhatsappSettings({...whatsappSettings, token: e.target.value})}
-                      placeholder="Enter WhatsApp API token"
-                    />
-                  </div>
-                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                    <p className="text-sm text-blue-800">
-                      <strong>Setup Instructions:</strong>
-                      <br />
-                      1. Register for a WhatsApp Business API account
-                      <br />
-                      2. Get your API URL and token from your provider
-                      <br />
-                      3. Enter the details above and test the connection
-                    </p>
-                  </div>
-                </div>
-              )}
-              
-              <Button onClick={handleSaveWhatsAppSettings} className="bg-agri-green-500 hover:bg-agri-green-600">
-                <Save className="h-4 w-4 mr-2" />
-                Save WhatsApp Settings
-              </Button>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="users" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Users className="h-5 w-5" />
-                User Management
-              </CardTitle>
-              <CardDescription>
-                View and manage user accounts in your organization.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Role</TableHead>
-                    <TableHead>Joined Date</TableHead>
-                    <TableHead>Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {mockUsers.map((user) => (
-                    <TableRow key={user.id}>
-                      <TableCell className="font-medium">{user.email}</TableCell>
-                      <TableCell>
-                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-                          user.role === 'admin' 
-                            ? 'bg-purple-100 text-purple-800' 
-                            : 'bg-gray-100 text-gray-800'
-                        }`}>
-                          {user.role}
-                        </span>
-                      </TableCell>
-                      <TableCell>{new Date(user.created_at).toLocaleDateString()}</TableCell>
-                      <TableCell>
-                        <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold bg-green-100 text-green-800">
-                          Active
-                        </span>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-
-              <div className="mt-6 p-4 bg-gray-50 border rounded-lg">
-                <p className="text-sm text-gray-600">
-                  <strong>Note:</strong> User invitation and role management features will be available in a future update. 
-                  Currently showing read-only view of existing users.
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+      <Button className="h-12 w-full sm:w-auto bg-agri-green-500 hover:bg-agri-green-600" onClick={submit} disabled={isSaving}>
+        {isSaving ? "Saving..." : "Save settings"}
+      </Button>
     </div>
   );
 };

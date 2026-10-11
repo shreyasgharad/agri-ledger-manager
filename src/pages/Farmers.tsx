@@ -9,7 +9,6 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useFarmers } from "@/hooks/useFarmers";
-import { useAuth } from "@/hooks/useAuth";
 
 const Farmers = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -18,19 +17,21 @@ const Farmers = () => {
     name: "",
     phone: "",
     address: "",
+    village_name: "",
     crop_type: "",
   });
 
   const { farmers, isLoading, addFarmer, deleteFarmer, isAddingFarmer, error } = useFarmers();
-  const { isAdmin, profile, user, isLoading: authLoading } = useAuth();
+  const isAdmin = true; // single-user mode: no login yet
+  const authLoading = false;
 
-  console.log('Farmers page - Auth state:', { user: !!user, profile: !!profile, isLoading: authLoading });
-  console.log('Farmers page - Farmers state:', { farmersCount: farmers.length, isLoading, error });
 
   const filteredFarmers = farmers.filter(
     (farmer) =>
       farmer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       farmer.phone.includes(searchTerm) ||
+      (farmer.code && farmer.code.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (farmer.villages?.name && farmer.villages.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (farmer.address && farmer.address.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
@@ -40,8 +41,6 @@ const Farmers = () => {
   };
 
   const handleAddFarmer = () => {
-    console.log('Adding farmer:', newFarmer);
-    
     if (!newFarmer.name || !newFarmer.phone) {
       return;
     }
@@ -52,6 +51,7 @@ const Farmers = () => {
       name: "",
       phone: "",
       address: "",
+      village_name: "",
       crop_type: "",
     });
   };
@@ -91,7 +91,7 @@ const Farmers = () => {
         <div>
           <h1 className="text-3xl font-bold text-agri-green-700">Farmers</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Manage farmer records, balances, and contact details.
+            Every farmer gets a unique code. Money owed is tracked on bills, not here.
           </p>
         </div>
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
@@ -129,6 +129,16 @@ const Farmers = () => {
                   placeholder="Enter 10-digit phone number"
                   pattern="[0-9]{10}"
                   required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="village_name">Village</Label>
+                <Input
+                  id="village_name"
+                  name="village_name"
+                  value={newFarmer.village_name}
+                  onChange={handleInputChange}
+                  placeholder="Village name (new villages are created automatically)"
                 />
               </div>
               <div className="space-y-2">
@@ -181,7 +191,7 @@ const Farmers = () => {
         <CardHeader>
           <CardTitle>Farmer Directory</CardTitle>
           <CardDescription>
-            Manage all farmer details and view balance amounts.
+            Search by name, phone, code or village.
           </CardDescription>
           <div className="relative my-2">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -208,11 +218,11 @@ const Farmers = () => {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead>Code</TableHead>
                       <TableHead>Name</TableHead>
                       <TableHead>Phone</TableHead>
-                      <TableHead>Address</TableHead>
+                      <TableHead>Village</TableHead>
                       <TableHead>Crop Type</TableHead>
-                      <TableHead>Balance</TableHead>
                       <TableHead className="w-[100px]">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -220,6 +230,7 @@ const Farmers = () => {
                     {filteredFarmers.length > 0 ? (
                       filteredFarmers.map((farmer) => (
                         <TableRow key={farmer.id}>
+                          <TableCell className="font-mono text-xs">{farmer.code}</TableCell>
                           <TableCell className="font-medium">{farmer.name}</TableCell>
                           <TableCell>
                             <div className="flex items-center gap-2">
@@ -242,17 +253,8 @@ const Farmers = () => {
                               </Button>
                             </div>
                           </TableCell>
-                          <TableCell>{farmer.address || "-"}</TableCell>
+                          <TableCell>{farmer.villages?.name || farmer.address || "-"}</TableCell>
                           <TableCell>{farmer.crop_type || "-"}</TableCell>
-                          <TableCell className={`font-medium ${
-                            (farmer.balance || 0) > 0 
-                              ? "text-green-600" 
-                              : (farmer.balance || 0) < 0 
-                              ? "text-red-600" 
-                              : ""
-                          }`}>
-                            {(farmer.balance || 0) > 0 ? "+" : ""}₹{(farmer.balance || 0).toLocaleString()}
-                          </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-2">
                               {isAdmin && (
@@ -293,15 +295,7 @@ const Farmers = () => {
                       <CardContent className="p-4">
                         <div className="flex justify-between items-start mb-2">
                           <h3 className="font-medium">{farmer.name}</h3>
-                          <span className={`text-sm font-medium ${
-                            (farmer.balance || 0) > 0 
-                              ? "text-green-600" 
-                              : (farmer.balance || 0) < 0 
-                              ? "text-red-600" 
-                              : ""
-                          }`}>
-                            ₹{(farmer.balance || 0).toLocaleString()}
-                          </span>
+                          <span className="font-mono text-xs text-muted-foreground">{farmer.code}</span>
                         </div>
                         <div className="space-y-2 text-sm text-muted-foreground">
                           <div className="flex items-center gap-2">
@@ -323,7 +317,7 @@ const Farmers = () => {
                               WhatsApp
                             </Button>
                           </div>
-                          {farmer.address && <p>📍 {farmer.address}</p>}
+                          {(farmer.villages?.name || farmer.address) && <p>📍 {farmer.villages?.name || farmer.address}</p>}
                           {farmer.crop_type && <p>🌾 {farmer.crop_type}</p>}
                         </div>
                       </CardContent>
