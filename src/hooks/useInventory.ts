@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useRealtimeSubscription } from "./useRealtimeSubscription";
 import { useAuth } from "./useAuth";
+import { getOrgId } from "@/lib/org";
 
 export interface InventoryItem {
   id: number;
@@ -23,6 +24,7 @@ export const useInventory = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { profile } = useAuth();
+  const orgId = getOrgId(profile?.org_id);
 
   const {
     data: inventory = [],
@@ -30,35 +32,35 @@ export const useInventory = () => {
     error,
     refetch,
   } = useQuery({
-    queryKey: ["inventory"],
+    queryKey: ["inventory", orgId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("inventory")
         .select("*, farmers(name)")
+        .eq("org_id", orgId)
         .order("created_at", { ascending: false });
-      
+
       if (error) throw error;
       return data as InventoryItem[];
     },
-    enabled: !!profile?.org_id,
   });
 
   // Subscribe to real-time updates
-  useRealtimeSubscription({ table: 'inventory', onUpdate: refetch });
+  useRealtimeSubscription({ table: "inventory", onUpdate: refetch });
 
   const addInventoryMutation = useMutation({
-    mutationFn: async (item: Omit<InventoryItem, "id" | "created_at" | "updated_at" | "farmers" | "bags_returned" | "org_id">) => {
-      if (!profile?.org_id) throw new Error("Organization ID not found");
-      
+    mutationFn: async (
+      item: Omit<
+        InventoryItem,
+        "id" | "created_at" | "updated_at" | "farmers" | "bags_returned" | "org_id"
+      >
+    ) => {
       const { data, error } = await supabase
         .from("inventory")
-        .insert([{
-          ...item,
-          org_id: profile.org_id
-        }])
+        .insert([{ ...item, org_id: orgId }])
         .select()
         .single();
-      
+
       if (error) throw error;
       return data;
     },
@@ -80,14 +82,18 @@ export const useInventory = () => {
   });
 
   const updateInventoryMutation = useMutation({
-    mutationFn: async ({ id, ...updates }: Partial<InventoryItem> & { id: number }) => {
+    mutationFn: async ({
+      id,
+      ...updates
+    }: Omit<Partial<InventoryItem>, "farmers"> & { id: number }) => {
       const { data, error } = await supabase
         .from("inventory")
         .update(updates)
         .eq("id", id)
+        .eq("org_id", orgId)
         .select()
         .single();
-      
+
       if (error) throw error;
       return data;
     },

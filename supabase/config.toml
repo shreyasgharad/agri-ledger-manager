@@ -1,10 +1,1 @@
-
-project_id = "fefwibupkqnejzmnhtqb"
-
-[auth]
-enabled = true
-site_url = "http://localhost:8080"
-additional_redirect_urls = ["https://lovable.dev"]
-
-[functions.send-whatsapp]
-verify_jwt = false
+project_id = "fbxwyxsftnzycbqcglsp"
