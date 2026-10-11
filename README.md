@@ -25,7 +25,7 @@ React 18 · TypeScript · Vite · Tailwind · shadcn/ui · TanStack Query · Rea
 ## Getting started
 ```bash
 npm install
-cp .env.example .env     # set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY
+cp .env.example .env     # set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY
 npm run dev              # http://localhost:8080
 npm run build
 npm run lint
