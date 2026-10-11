@@ -58,6 +58,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.error('Profile fetch error:', profileError);
         throw profileError;
       }
+
+      if (!profileData) {
+        throw new Error('No profile found for this user');
+      }
       
       // Type cast the role to ensure it matches our Profile interface
       const typedProfile: Profile = {
@@ -80,6 +84,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (orgError) {
           console.error('Organization fetch error:', orgError);
           throw orgError;
+        }
+
+        if (!orgData) {
+          throw new Error('No organization found for this profile');
         }
         setOrganization(orgData);
       }

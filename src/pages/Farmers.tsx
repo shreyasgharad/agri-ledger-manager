@@ -82,19 +82,8 @@ const Farmers = () => {
     );
   }
 
-  // Show error if no profile or organization
-  if (!profile?.org_id) {
-    return (
-      <div className="space-y-6">
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            No organization found for your account. Please contact your administrator to assign you to an organization.
-          </AlertDescription>
-        </Alert>
-      </div>
-    );
-  }
+  // Single-user mode: no organization guard needed; the app always serves
+  // the default organization (see src/lib/org.ts).
 
   return (
     <div className="space-y-6">
@@ -102,7 +91,7 @@ const Farmers = () => {
         <div>
           <h1 className="text-3xl font-bold text-agri-green-700">Farmers</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Organization: {profile.org_id} | Role: {profile.role}
+            Manage farmer records, balances, and contact details.
           </p>
         </div>
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
