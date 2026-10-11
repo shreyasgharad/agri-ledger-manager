@@ -41,6 +41,14 @@ create index if not exists farmers_name_trgm_idx on public.farmers using gin (na
 create index if not exists farmers_phone_trgm_idx on public.farmers using gin (phone gin_trgm_ops);
 create index if not exists farmers_village_idx on public.farmers (village_id);
 
+-- single-user mode: legacy tables must also default to the one org
+alter table public.farmers alter column org_id set default public.default_org_id();
+alter table public.transactions alter column org_id set default public.default_org_id();
+alter table public.inventory alter column org_id set default public.default_org_id();
+update public.farmers set org_id = public.default_org_id() where org_id is null;
+update public.transactions set org_id = public.default_org_id() where org_id is null;
+update public.inventory set org_id = public.default_org_id() where org_id is null;
+
 -- balances are computed from bills minus payments, never stored
 alter table public.farmers drop column if exists balance;
 
