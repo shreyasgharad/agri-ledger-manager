@@ -82,7 +82,10 @@ export const useInventory = () => {
   });
 
   const updateInventoryMutation = useMutation({
-    mutationFn: async ({ id, ...updates }: Partial<InventoryItem> & { id: number }) => {
+    mutationFn: async ({
+      id,
+      ...updates
+    }: Omit<Partial<InventoryItem>, "farmers"> & { id: number }) => {
       const { data, error } = await supabase
         .from("inventory")
         .update(updates)
