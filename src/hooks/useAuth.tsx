@@ -49,16 +49,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     let active = true;
 
-    (async () => {
-      const [{ data: flag }, { data: sess }] = await Promise.all([
-        db.from('app_flags').select('value').eq('key', 'roles_enforced').maybeSingle(),
-        supabase.auth.getSession(),
-      ]);
-      if (!active) return;
-      setEnforced(flag?.value === 'on');
-      setSession(sess.session);
-      await loadRole(sess.session?.user.id);
+    // Never leave the screen on "Loading..." if the network is slow or fails.
+    const safety = setTimeout(() => {
       if (active) setIsLoading(false);
+    }, 8000);
+
+    (async () => {
+      try {
+        const [{ data: flag }, { data: sess }] = await Promise.all([
+          db.from('app_flags').select('value').eq('key', 'roles_enforced').maybeSingle(),
+          supabase.auth.getSession(),
+        ]);
+        if (!active) return;
+        setEnforced(flag?.value === 'on');
+        setSession(sess.session);
+        await loadRole(sess.session?.user.id);
+      } catch {
+        /* fall back to open mode with no session */
+      } finally {
+        if (active) setIsLoading(false);
+        clearTimeout(safety);
+      }
     })();
 
     const { data: sub } = supabase.auth.onAuthStateChange((_event, next) => {
@@ -71,6 +82,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     return () => {
       active = false;
+      clearTimeout(safety);
       sub.subscription.unsubscribe();
     };
   }, [loadRole]);
