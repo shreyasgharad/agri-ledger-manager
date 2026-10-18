@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { EntityPicker } from "@/components/common/EntityPicker";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { useBagTypes, useBuyers, useLot } from "@/hooks/useAgri";
+import { useAuth } from "@/hooks/useAuth";
 import { computeBill } from "@/lib/billing";
 import { formatDate, formatINR, formatKg, formatQuintal } from "@/lib/format";
 
@@ -20,6 +21,7 @@ const LotDetail = () => {
   const navigate = useNavigate();
   const { data, isLoading, error, addBag, deleteBag, addBid, deleteBid, confirmSale, cancelLot, issueBills, isIssuing } = useLot(id);
   const { data: bagTypes = [] } = useBagTypes();
+  const { canWrite } = useAuth();
   const { buyers } = useBuyers();
 
   const [weight, setWeight] = useState("");
@@ -54,7 +56,7 @@ const LotDetail = () => {
   if (error || !data) return <p className="py-10 text-center text-red-600">Could not load this lot.</p>;
 
   const { lot, bags, bids, sale, advances, bills, totals } = data;
-  const editable = lot.status === "open";
+  const editable = lot.status === "open" && canWrite;
   const topBid = bids[0];
   const farmerBill = bills.find((b) => b.party_type === "farmer");
   const buyerBill = bills.find((b) => b.party_type === "buyer");
@@ -204,7 +206,7 @@ const LotDetail = () => {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {lot.status === "auctioned" && preview && (
+            {lot.status === "auctioned" && preview && canWrite && (
               <>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">

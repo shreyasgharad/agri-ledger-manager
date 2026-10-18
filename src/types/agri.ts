@@ -1,11 +1,12 @@
 export type LotStatus = "open" | "auctioned" | "billed" | "cancelled";
-export type AdvanceType = "transport" | "labour" | "other";
+export type AdvanceType = "cash" | "bags" | "transport" | "labour" | "other";
+export type AppRole = "admin" | "staff" | "viewer" | "pending";
 export type PartyType = "farmer" | "buyer";
 export type PaymentMethod = "cash" | "upi" | "bank";
 
 export interface Village { id: string; name: string }
 export interface Crop { id: string; name: string; name_local: string | null }
-export interface BagType { id: string; name: string; tare_kg: number }
+export interface BagType { id: string; name: string; tare_kg: number; price: number }
 
 export interface Farmer {
   id: string;
@@ -56,7 +57,13 @@ export interface Advance {
   reason: string | null;
   advance_date: string;
   settled_bill_id: string | null;
+  bag_type_id: string | null;
+  qty: number | null;
+  due_date: string | null;
+  repaid_at: string | null;
+  repaid_method: PaymentMethod | null;
   farmers?: { name: string; code: string | null } | null;
+  bag_types?: { name: string } | null;
 }
 
 export interface BillItem { id: string; description: string; qty_bags: number | null; weight_kg: number | null; rate: number | null; amount: number }
@@ -92,4 +99,34 @@ export interface BusinessSettings {
   bill_footer: string | null;
   default_farmer_commission: number;
   default_buyer_commission: number;
+}
+
+export interface FarmerOverview {
+  farmer_id: string;
+  open_advance: number;
+  bills_due: number;
+  lot_count: number;
+  bill_count: number;
+  last_activity: string | null;
+}
+
+export interface FarmerPnl {
+  farmer_commission: number;
+  buyer_commission: number;
+  total_commission: number;
+  gross_traded: number;
+  bills_count: number;
+  open_advances: number;
+  open_cash: number;
+  open_bags: number;
+  open_labour_transport: number;
+  bills_due: number;
+}
+
+export interface UserProfile {
+  user_id: string;
+  role: AppRole;
+  email: string | null;
+  full_name: string | null;
+  created_at: string;
 }

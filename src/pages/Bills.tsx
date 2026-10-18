@@ -1,5 +1,8 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent } from "@/components/ui/card";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { StatusBadge } from "@/components/common/StatusBadge";
@@ -8,14 +11,22 @@ import { formatDate, formatINR } from "@/lib/format";
 
 const Bills = () => {
   const { data: bills = [], isLoading } = useBills();
+  const { canWrite } = useAuth();
   const [party, setParty] = useState<"all" | "farmer" | "buyer">("all");
   const shown = bills.filter((b) => party === "all" || b.party_type === party);
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-2xl md:text-3xl font-bold text-agri-green-700">Bills</h1>
-        <p className="text-sm text-muted-foreground">Each sale produces a farmer bill and a buyer bill. Create them from a lot.</p>
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-bold text-agri-green-700">Bills</h1>
+          <p className="text-sm text-muted-foreground">Each sale makes a farmer bill and a buyer bill.</p>
+        </div>
+        {canWrite && (
+          <Button asChild className="h-12 bg-agri-green-500 hover:bg-agri-green-600">
+            <Link to="/bills/new"><Plus className="h-4 w-4 mr-2" /> Create bill</Link>
+          </Button>
+        )}
       </div>
 
       <ToggleGroup type="single" value={party} onValueChange={(v) => v && setParty(v as typeof party)} className="justify-start">
@@ -27,7 +38,7 @@ const Bills = () => {
       {isLoading ? (
         <p className="text-center py-8 text-muted-foreground">Loading bills...</p>
       ) : shown.length === 0 ? (
-        <Card><CardContent className="py-10 text-center text-muted-foreground">No bills yet. Confirm a sale on a lot to issue the first pair.</CardContent></Card>
+        <Card><CardContent className="py-10 text-center text-muted-foreground">No bills yet. Tap Create bill to make the first pair.</CardContent></Card>
       ) : (
         <div className="grid gap-2">
           {shown.map((b) => {

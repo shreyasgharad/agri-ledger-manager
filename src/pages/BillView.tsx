@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useBill } from "@/hooks/useAgri";
+import { useAuth } from "@/hooks/useAuth";
 import { formatDate, formatINR, formatKg, formatQuintal } from "@/lib/format";
 import type { PaymentMethod } from "@/types/agri";
 
@@ -15,6 +16,7 @@ type Paper = "a4" | "thermal";
 const BillView = () => {
   const { id } = useParams();
   const { data, isLoading, error, addPayment, isPaying } = useBill(id);
+  const { canWrite } = useAuth();
   const [paper, setPaper] = useState<Paper>("a4");
   const [amount, setAmount] = useState("");
   const [method, setMethod] = useState<PaymentMethod>("cash");
@@ -143,7 +145,7 @@ const BillView = () => {
               ))}
             </ul>
           )}
-          {due > 0 && (
+          {due > 0 && canWrite && (
             <div className="space-y-2">
               <Label>Record payment</Label>
               <div className="flex flex-wrap gap-2">

@@ -16,8 +16,20 @@ Mobile-first billing and ledger app for crop aggregators/brokers: farmers, weigh
 - **Advances**: transport / labour / other (reason required for "other"), deducted on the farmer's bill.
 - **Bills**: one tap issues both bills with gap-free numbers per financial year (`FB/26-27/00001`, `BB/26-27/00001`), commission 0-2% per side, printable on A4 or 80 mm thermal paper, shareable on WhatsApp.
 - **Payments** against each bill; balances are computed (billed minus paid), never typed.
-- **Settings** for business name/address/GSTIN/footer and default commission.
+- **Settings** for business name/address/GSTIN/footer, default commission, **bag prices (jute/plastic)** and who can use the app.
+- **Farmer ledger**: tap a farmer for the full history (bills, lots, advances, payments); the admin also sees profit & loss.
+- **Create bill**: one short form (farmer, quantity, buyer, rate); open advances, bags and expenses are cut automatically.
 - Open access, no login (Phase 1). Every table already carries `org_id`, so login can be enabled later without schema changes.
+
+## Logins and roles
+| Role | Can do |
+|---|---|
+| **Admin** (father) | Everything: edit/remove advances, profit & loss, Settings (bag prices, commission, people) |
+| **Staff** | View, and add farmers, lots, advances, bills, payments. Cannot edit advances, see profit & loss, or open Settings |
+| **View only** | Look at everything except profit & loss. Cannot add or change anything |
+| **Pending** | Signed up, waiting for the admin to approve |
+
+The first person to sign up becomes the admin; everyone after that waits for approval in Settings. Rules are enforced in the database (RLS), not just hidden in the screens. Until `app_flags.roles_enforced = 'on'` the app runs open (no login), so a new install is never locked out. See `supabase/migrations/20261018000100_roles_and_rls.sql`.
 
 ## Tech stack
 React 18 · TypeScript · Vite · Tailwind · shadcn/ui · TanStack Query · React Router · Supabase (Postgres, Realtime; Auth in Phase 2).

@@ -1,10 +1,8 @@
-
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { db } from "@/integrations/supabase/untyped";
 import { useToast } from "@/hooks/use-toast";
 import { useRealtimeSubscription } from "./useRealtimeSubscription";
-import { useAuth } from "./useAuth";
-import { getOrgId } from "@/lib/org";
+import { DEFAULT_ORG_ID } from "@/lib/org";
 
 export interface Farmer {
   id: string;
@@ -22,19 +20,32 @@ export interface Farmer {
   updated_at: string;
 }
 
+export interface FarmerInput {
+  name: string;
+  phone: string;
+  village_name?: string;
+  crop_type?: string | null;
+}
+
+const orgId = DEFAULT_ORG_ID;
+
+/** Finds the village by name (case-insensitive) or creates it. */
+async function resolveVillageId(name: string | undefined): Promise<string | null> {
+  const clean = name?.trim();
+  if (!clean) return null;
+  const { data: existing } = await db.from("villages").select("id").ilike("name", clean).is("deleted_at", null).maybeSingle();
+  if (existing) return existing.id;
+  const { data: created, error } = await db.from("villages").insert([{ name: clean, org_id: orgId }]).select("id").single();
+  if (error) throw error;
+  return created.id;
+}
+
 export const useFarmers = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const { profile } = useAuth();
-  const orgId = getOrgId(profile?.org_id);
 
-  const {
-    data: farmers = [],
-    isLoading,
-    error,
-    refetch,
-  } = useQuery({
-    queryKey: ["farmers", orgId],
+  const { data: farmers = [], isLoading, error, refetch } = useQuery({
+    queryKey: ["farmers"],
     queryFn: async () => {
       const { data, error } = await db
         .from("farmers")
@@ -42,126 +53,66 @@ export const useFarmers = () => {
         .eq("org_id", orgId)
         .is("deleted_at", null)
         .order("name", { ascending: true });
-
       if (error) throw error;
-      return data as unknown as Farmer[];
+      return data as Farmer[];
     },
   });
 
-  // Subscribe to real-time updates
   useRealtimeSubscription({ table: "farmers", onUpdate: refetch });
 
+  const refresh = () => {
+    queryClient.invalidateQueries({ queryKey: ["farmers"] });
+    queryClient.invalidateQueries({ queryKey: ["farmer-overview"] });
+    queryClient.invalidateQueries({ queryKey: ["villages"] });
+  };
+  const fail = (what: string) => (e: Error) =>
+    toast({ title: "Error", description: `Failed to ${what}: ${e.message}`, variant: "destructive" });
+
   const addFarmerMutation = useMutation({
-    mutationFn: async (
-      input: {
-        name: string;
-        phone: string;
-        address?: string | null;
-        crop_type?: string | null;
-        notes?: string | null;
-        village_name?: string;
-      }
-    ) => {
-      const { village_name, ...farmer } = input;
-      let village_id: string | null = null;
-      const villageName = village_name?.trim();
-      if (villageName) {
-        const { data: existing } = await db
-          .from("villages")
-          .select("id")
-          .ilike("name", villageName)
-          .is("deleted_at", null)
-          .maybeSingle();
-        if (existing) {
-          village_id = existing.id;
-        } else {
-          const { data: created, error: villageError } = await db
-            .from("villages")
-            .insert([{ name: villageName, org_id: orgId }])
-            .select("id")
-            .single();
-          if (villageError) throw villageError;
-          village_id = created.id;
-        }
-      }
+    mutationFn: async (input: FarmerInput) => {
+      const { village_name, ...rest } = input;
+      const village_id = await resolveVillageId(village_name);
       const { data, error } = await db
         .from("farmers")
-        .insert([{ ...farmer, village_id, org_id: orgId }])
-        .select()
+        .insert([{ ...rest, village_id, org_id: orgId }])
+        .select("*, villages(name)")
         .single();
-
       if (error) throw error;
-      return data;
+      return data as Farmer;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["farmers"] });
-      toast({
-        title: "Success",
-        description: "Farmer added successfully!",
-      });
+    onSuccess: (farmer) => {
+      refresh();
+      toast({ title: "Farmer added", description: `${farmer.name} · ID ${farmer.code}` });
     },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: `Failed to add farmer: ${error.message}`,
-        variant: "destructive",
-      });
-    },
+    onError: fail("add farmer"),
   });
 
   const updateFarmerMutation = useMutation({
-    mutationFn: async ({ id, ...updates }: Partial<Farmer> & { id: string }) => {
-      const { data, error } = await db
-        .from("farmers")
-        .update(updates)
-        .eq("id", id)
-        .eq("org_id", orgId)
-        .select()
-        .single();
-
+    mutationFn: async ({ id, village_name, ...rest }: Partial<FarmerInput> & { id: string; is_active?: boolean }) => {
+      const updates: Record<string, unknown> = { ...rest };
+      if (village_name !== undefined) updates.village_id = await resolveVillageId(village_name);
+      const { data, error } = await db.from("farmers").update(updates).eq("id", id).eq("org_id", orgId).select().single();
       if (error) throw error;
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["farmers"] });
-      toast({
-        title: "Success",
-        description: "Farmer updated successfully!",
-      });
+      refresh();
+      queryClient.invalidateQueries({ queryKey: ["farmer-ledger"] });
+      toast({ title: "Farmer updated" });
     },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: `Failed to update farmer: ${error.message}`,
-        variant: "destructive",
-      });
-    },
+    onError: fail("update farmer"),
   });
 
   const deleteFarmerMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await db
-        .from("farmers")
-        .update({ deleted_at: new Date().toISOString() })
-        .eq("id", id)
-        .eq("org_id", orgId);
-
+      const { error } = await db.from("farmers").update({ deleted_at: new Date().toISOString() }).eq("id", id).eq("org_id", orgId);
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["farmers"] });
-      toast({
-        title: "Success",
-        description: "Farmer deleted successfully!",
-      });
+      refresh();
+      toast({ title: "Farmer removed" });
     },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: `Failed to delete farmer: ${error.message}`,
-        variant: "destructive",
-      });
-    },
+    onError: fail("delete farmer"),
   });
 
   return {
@@ -169,11 +120,10 @@ export const useFarmers = () => {
     isLoading,
     error,
     refetch,
-    addFarmer: addFarmerMutation.mutate,
+    addFarmer: addFarmerMutation.mutateAsync,
     updateFarmer: updateFarmerMutation.mutate,
     deleteFarmer: deleteFarmerMutation.mutate,
     isAddingFarmer: addFarmerMutation.isPending,
     isUpdatingFarmer: updateFarmerMutation.isPending,
-    isDeletingFarmer: deleteFarmerMutation.isPending,
   };
 };
