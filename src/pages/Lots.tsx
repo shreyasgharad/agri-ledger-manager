@@ -9,12 +9,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { EntityPicker } from "@/components/common/EntityPicker";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { useFarmers } from "@/hooks/useFarmers";
+import { useAuth } from "@/hooks/useAuth";
 import { useCrops, useLots } from "@/hooks/useAgri";
 import { formatDate, formatKg } from "@/lib/format";
 
 const Lots = () => {
   const navigate = useNavigate();
   const { lots, isLoading, createLot, isCreating } = useLots();
+  const { canWrite } = useAuth();
   const { farmers } = useFarmers();
   const { data: crops = [] } = useCrops();
   const [open, setOpen] = useState(false);
@@ -35,9 +37,11 @@ const Lots = () => {
           <h1 className="text-2xl md:text-3xl font-bold text-agri-green-700">Lots</h1>
           <p className="text-sm text-muted-foreground">Weigh, auction and bill each farmer's produce.</p>
         </div>
-        <Button className="h-12 bg-agri-green-500 hover:bg-agri-green-600" onClick={() => setOpen(true)}>
-          <Plus className="h-4 w-4 mr-2" /> New lot
-        </Button>
+        {canWrite && (
+          <Button className="h-12 bg-agri-green-500 hover:bg-agri-green-600" onClick={() => setOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" /> New lot
+          </Button>
+        )}
       </div>
 
       {isLoading ? (

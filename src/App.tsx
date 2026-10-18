@@ -8,15 +8,16 @@ import { AuthProvider } from "@/hooks/useAuth";
 import { AppLayout } from "@/components/layout/AppLayout";
 import Dashboard from "./pages/Dashboard";
 import Farmers from "./pages/Farmers";
-import Transactions from "./pages/Transactions";
-import Inventory from "./pages/Inventory";
+import FarmerLedger from "./pages/FarmerLedger";
+import NewBill from "./pages/NewBill";
+import Auth from "./pages/Auth";
+import { RequireAuth } from "@/components/layout/RequireAuth";
 import Lots from "./pages/Lots";
 import LotDetail from "./pages/LotDetail";
 import Buyers from "./pages/Buyers";
 import Advances from "./pages/Advances";
 import Bills from "./pages/Bills";
 import BillView from "./pages/BillView";
-import DataManagement from "./pages/DataManagement";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
@@ -27,26 +28,26 @@ const App = () => (
     <TooltipProvider>
       <AuthProvider>
         <BrowserRouter>
+          <RequireAuth>
           <AppLayout>
             <Routes>
+              <Route path="/auth" element={<Auth />} />
               <Route path="/" element={<Dashboard />} />
               <Route path="/farmers" element={<Farmers />} />
-              <Route path="/transactions" element={<Transactions />} />
-              <Route path="/inventory" element={<Inventory />} />
+              <Route path="/farmers/:id" element={<FarmerLedger />} />
               <Route path="/lots" element={<Lots />} />
               <Route path="/lots/:id" element={<LotDetail />} />
               <Route path="/buyers" element={<Buyers />} />
               <Route path="/advances" element={<Advances />} />
               <Route path="/bills" element={<Bills />} />
+              <Route path="/bills/new" element={<NewBill />} />
               <Route path="/bills/:id" element={<BillView />} />
               <Route path="/billing" element={<Navigate to="/bills" replace />} />
-              <Route path="/data" element={<DataManagement />} />
               <Route path="/settings" element={<Settings />} />
-              <Route path="/reports" element={<div className="p-6"><h1 className="text-2xl font-bold">Reports (Coming Soon)</h1><p className="text-gray-600">Future module for advanced analytics and reporting</p></div>} />
-              <Route path="/farmer-portal" element={<div className="p-6"><h1 className="text-2xl font-bold">Farmer Portal (Coming Soon)</h1><p className="text-gray-600">Future self-service portal for farmers</p></div>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </AppLayout>
+          </RequireAuth>
         </BrowserRouter>
         <Toaster />
         <Sonner />

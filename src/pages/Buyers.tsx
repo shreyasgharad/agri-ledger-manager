@@ -6,12 +6,14 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useBuyers } from "@/hooks/useAgri";
+import { useAuth } from "@/hooks/useAuth";
 import { formatINR } from "@/lib/format";
 
 const empty = { name: "", firm_name: "", phone: "", address: "" };
 
 const Buyers = () => {
   const { buyers, balances, isLoading, addBuyer, isAdding } = useBuyers();
+  const { canWrite } = useAuth();
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(empty);
@@ -33,9 +35,7 @@ const Buyers = () => {
           <h1 className="text-2xl md:text-3xl font-bold text-agri-green-700">Buyers</h1>
           <p className="text-sm text-muted-foreground">Traders who bid in the auction.</p>
         </div>
-        <Button className="h-12 bg-agri-green-500 hover:bg-agri-green-600" onClick={() => setOpen(true)}>
-          <Plus className="h-4 w-4 mr-2" /> Add buyer
-        </Button>
+        {canWrite && (<Button className="h-12 bg-agri-green-500 hover:bg-agri-green-600" onClick={() => setOpen(true)}><Plus className="h-4 w-4 mr-2" /> Add buyer</Button>)}
       </div>
 
       <div className="relative">

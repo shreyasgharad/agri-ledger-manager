@@ -4,11 +4,89 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useSettings } from "@/hooks/useAgri";
+import { useBagPrices, useProfiles, useSettings } from "@/hooks/useAgri";
+import { useAuth } from "@/hooks/useAuth";
+import { formatINR } from "@/lib/format";
+import type { AppRole } from "@/types/agri";
 
 const COMMISSIONS = ["1", "1.25", "1.5", "1.75", "2"];
 
+const ROLE_LABEL: Record<AppRole, string> = {
+  admin: "Admin (full access)",
+  staff: "Staff (view + add)",
+  viewer: "View only",
+  pending: "Waiting for approval",
+};
+
+const BagPrices = () => {
+  const { bagTypes, save } = useBagPrices();
+  const [draft, setDraft] = useState<Record<string, string>>({});
+  const rows = bagTypes.filter((b) => b.name !== "Other");
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Bag prices</CardTitle>
+        <CardDescription>Price of one bag. Used when bags are given to a farmer and cut from the bill later.</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {rows.map((b) => (
+          <div key={b.id} className="flex items-center gap-3">
+            <Label className="w-24 text-base">{b.name}</Label>
+            <Input
+              className="h-12 w-32 text-lg" type="number" inputMode="decimal" min="0"
+              value={draft[b.id] ?? String(b.price)}
+              onChange={(e) => setDraft({ ...draft, [b.id]: e.target.value })}
+            />
+            <Button
+              className="h-12" variant="outline"
+              disabled={draft[b.id] === undefined || !(Number(draft[b.id]) >= 0) || Number(draft[b.id]) === Number(b.price)}
+              onClick={() => { save({ id: b.id, price: Number(draft[b.id]) }); setDraft((d) => { const n = { ...d }; delete n[b.id]; return n; }); }}
+            >
+              Save
+            </Button>
+            <span className="text-sm text-muted-foreground">now {formatINR(Number(b.price))}</span>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  );
+};
+
+const Users = ({ enforced }: { enforced: boolean }) => {
+  const { profiles, setRole } = useProfiles(true);
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>People who can use the app</CardTitle>
+        <CardDescription>
+          {enforced
+            ? "New people sign up on the login page, then wait here for you to approve them."
+            : "Logins are not switched on yet. Once they are, everyone must sign in and the roles below apply."}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {profiles.length === 0 && <p className="text-sm text-muted-foreground">No accounts yet.</p>}
+        {profiles.map((p) => (
+          <div key={p.user_id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border p-3">
+            <div className="min-w-0">
+              <p className="font-medium truncate">{p.full_name || p.email}</p>
+              <p className="text-xs text-muted-foreground truncate">{p.email}</p>
+            </div>
+            <Select value={p.role} onValueChange={(v) => setRole({ user_id: p.user_id, role: v as AppRole })}>
+              <SelectTrigger className="h-11 w-52"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {(Object.keys(ROLE_LABEL) as AppRole[]).map((r) => <SelectItem key={r} value={r}>{ROLE_LABEL[r]}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  );
+};
+
 const Settings = () => {
+  const { isAdmin, enforced } = useAuth();
   const { settings, isLoading, save, isSaving } = useSettings();
   const [form, setForm] = useState({
     business_name: "",
@@ -47,6 +125,7 @@ const Settings = () => {
       default_buyer_commission: Number(form.default_buyer_commission),
     });
 
+  if (!isAdmin) return <p className="py-10 text-center text-muted-foreground">Only the admin can change settings.</p>;
   if (isLoading) return <p className="py-10 text-center text-muted-foreground">Loading settings...</p>;
 
   return (
@@ -90,6 +169,9 @@ const Settings = () => {
       <Button className="h-12 w-full sm:w-auto bg-agri-green-500 hover:bg-agri-green-600" onClick={submit} disabled={isSaving}>
         {isSaving ? "Saving..." : "Save settings"}
       </Button>
+
+      <BagPrices />
+      <Users enforced={enforced} />
     </div>
   );
 };

@@ -1,338 +1,210 @@
-
-import React, { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Search, Edit, Trash, Phone, MessageCircle, AlertCircle } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
+import { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
+import { AlertCircle, MessageCircle, Pencil, Phone, Plus, Search, Trash } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { useFarmers } from "@/hooks/useFarmers";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { FarmerFormDialog } from "@/components/farmers/FarmerFormDialog";
+import { useAuth } from "@/hooks/useAuth";
+import { useFarmerOverview, useVillages } from "@/hooks/useAgri";
+import { useFarmers, type Farmer } from "@/hooks/useFarmers";
+import { FARMER_CROPS } from "@/lib/constants";
+import { formatINR } from "@/lib/format";
+import { telHref, whatsappHref } from "@/lib/phone";
+
+type Status = "all" | "owes" | "we_owe" | "settled" | "inactive";
 
 const Farmers = () => {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [newFarmer, setNewFarmer] = useState({
-    name: "",
-    phone: "",
-    address: "",
-    village_name: "",
-    crop_type: "",
-  });
+  const { farmers, isLoading, error, deleteFarmer } = useFarmers();
+  const { data: overview = {} } = useFarmerOverview();
+  const { data: villages = [] } = useVillages();
+  const { canWrite, isAdmin } = useAuth();
 
-  const { farmers, isLoading, addFarmer, deleteFarmer, isAddingFarmer, error } = useFarmers();
-  const isAdmin = true; // single-user mode: no login yet
-  const authLoading = false;
+  const [search, setSearch] = useState("");
+  const [village, setVillage] = useState("all");
+  const [crop, setCrop] = useState("all");
+  const [status, setStatus] = useState<Status>("all");
+  const [formOpen, setFormOpen] = useState(false);
+  const [editing, setEditing] = useState<Farmer | null>(null);
 
-
-  const filteredFarmers = farmers.filter(
-    (farmer) =>
-      farmer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      farmer.phone.includes(searchTerm) ||
-      (farmer.code && farmer.code.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (farmer.villages?.name && farmer.villages.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (farmer.address && farmer.address.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setNewFarmer({ ...newFarmer, [name]: value });
-  };
-
-  const handleAddFarmer = () => {
-    if (!newFarmer.name || !newFarmer.phone) {
-      return;
+  const stats = useMemo(() => {
+    let owes = 0, owesAmt = 0, weOwe = 0, weOweAmt = 0;
+    for (const f of farmers) {
+      const o = overview[f.id];
+      if (!f.is_active || !o) continue;
+      if (o.open_advance > 0) { owes++; owesAmt += o.open_advance; }
+      if (o.bills_due > 0) { weOwe++; weOweAmt += o.bills_due; }
     }
-    
-    addFarmer(newFarmer);
-    setIsAddDialogOpen(false);
-    setNewFarmer({
-      name: "",
-      phone: "",
-      address: "",
-      village_name: "",
-      crop_type: "",
+    return { owes, owesAmt, weOwe, weOweAmt, active: farmers.filter((f) => f.is_active).length };
+  }, [farmers, overview]);
+
+  const cropOptions = useMemo(() => {
+    const extra = farmers.map((f) => f.crop_type).filter((c): c is string => !!c && !(FARMER_CROPS as readonly string[]).includes(c));
+    return [...FARMER_CROPS, ...Array.from(new Set(extra))];
+  }, [farmers]);
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return farmers.filter((f) => {
+      const o = overview[f.id];
+      if (q && !(`${f.name} ${f.phone} ${f.code ?? ""} ${f.villages?.name ?? ""}`.toLowerCase().includes(q))) return false;
+      if (village !== "all" && f.villages?.name !== village) return false;
+      if (crop !== "all" && f.crop_type !== crop) return false;
+      if (status === "inactive") return !f.is_active;
+      if (!f.is_active) return false;
+      if (status === "owes") return (o?.open_advance ?? 0) > 0;
+      if (status === "we_owe") return (o?.bills_due ?? 0) > 0;
+      if (status === "settled") return (o?.open_advance ?? 0) <= 0 && (o?.bills_due ?? 0) <= 0;
+      return true;
     });
-  };
+  }, [farmers, overview, search, village, crop, status]);
 
-  const handleDeleteFarmer = (id: string) => {
-    if (confirm("Are you sure you want to delete this farmer?")) {
-      deleteFarmer(id);
-    }
-  };
-
-  const handleCall = (phone: string) => {
-    window.open(`tel:${phone}`);
-  };
-
-  const handleWhatsApp = (phone: string) => {
-    window.open(`https://wa.me/${phone.replace(/[^0-9]/g, '')}`);
-  };
-
-  // Show loading state while auth is loading
-  if (authLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-agri-green-500 mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading authentication...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Single-user mode: no organization guard needed; the app always serves
-  // the default organization (see src/lib/org.ts).
+  const openAdd = () => { setEditing(null); setFormOpen(true); };
+  const openEdit = (f: Farmer) => { setEditing(f); setFormOpen(true); };
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
+    <div className="space-y-4">
+      <div className="flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-bold text-agri-green-700">Farmers</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Every farmer gets a unique code. Money owed is tracked on bills, not here.
-          </p>
+          <h1 className="text-2xl md:text-3xl font-bold text-agri-green-700">Farmers</h1>
+          <p className="text-sm text-muted-foreground">Tap a farmer to see the full ledger.</p>
         </div>
-        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className="bg-agri-green-500 hover:bg-agri-green-600">
-              <Plus className="h-4 w-4 mr-2" /> Add Farmer
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Add New Farmer</DialogTitle>
-              <DialogDescription>
-                Enter the details of the new farmer below.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4 py-2">
-              <div className="space-y-2">
-                <Label htmlFor="name">Name *</Label>
-                <Input
-                  id="name"
-                  name="name"
-                  value={newFarmer.name}
-                  onChange={handleInputChange}
-                  placeholder="Enter farmer's name"
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="phone">Phone Number *</Label>
-                <Input
-                  id="phone"
-                  name="phone"
-                  value={newFarmer.phone}
-                  onChange={handleInputChange}
-                  placeholder="Enter 10-digit phone number"
-                  pattern="[0-9]{10}"
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="village_name">Village</Label>
-                <Input
-                  id="village_name"
-                  name="village_name"
-                  value={newFarmer.village_name}
-                  onChange={handleInputChange}
-                  placeholder="Village name (new villages are created automatically)"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="address">Address</Label>
-                <Input
-                  id="address"
-                  name="address"
-                  value={newFarmer.address}
-                  onChange={handleInputChange}
-                  placeholder="Enter farmer's address"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="crop_type">Crop Type</Label>
-                <Input
-                  id="crop_type"
-                  name="crop_type"
-                  value={newFarmer.crop_type}
-                  onChange={handleInputChange}
-                  placeholder="Enter crop type"
-                />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
-                Cancel
-              </Button>
-              <Button 
-                onClick={handleAddFarmer} 
-                disabled={isAddingFarmer || !newFarmer.name || !newFarmer.phone}
-                className="bg-agri-green-500 hover:bg-agri-green-600"
-              >
-                {isAddingFarmer ? "Adding..." : "Add Farmer"}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        {canWrite && (
+          <Button className="h-12 bg-agri-green-500 hover:bg-agri-green-600" onClick={openAdd}>
+            <Plus className="h-4 w-4 mr-2" /> Add farmer
+          </Button>
+        )}
+      </div>
+
+      {/* How many people need attention */}
+      <div className="grid grid-cols-3 gap-2 md:gap-3">
+        <button type="button" onClick={() => setStatus("all")} className="text-left">
+          <Card><CardContent className="p-3 md:p-4">
+            <p className="text-xs text-muted-foreground">Active farmers</p>
+            <p className="text-xl md:text-2xl font-bold">{stats.active}</p>
+          </CardContent></Card>
+        </button>
+        <button type="button" onClick={() => setStatus("owes")} className="text-left">
+          <Card className="border-red-200"><CardContent className="p-3 md:p-4">
+            <p className="text-xs text-muted-foreground">Owe us</p>
+            <p className="text-xl md:text-2xl font-bold text-red-600">{stats.owes}</p>
+            <p className="text-xs text-red-600">{formatINR(stats.owesAmt)}</p>
+          </CardContent></Card>
+        </button>
+        <button type="button" onClick={() => setStatus("we_owe")} className="text-left">
+          <Card className="border-amber-200"><CardContent className="p-3 md:p-4">
+            <p className="text-xs text-muted-foreground">We owe them</p>
+            <p className="text-xl md:text-2xl font-bold text-amber-600">{stats.weOwe}</p>
+            <p className="text-xs text-amber-600">{formatINR(stats.weOweAmt)}</p>
+          </CardContent></Card>
+        </button>
+      </div>
+
+      {/* Filters */}
+      <div className="space-y-2">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input className="pl-10 h-12 text-base" placeholder="Search name, phone, ID or village" value={search} onChange={(e) => setSearch(e.target.value)} />
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <Select value={village} onValueChange={setVillage}>
+            <SelectTrigger className="h-12"><SelectValue placeholder="Village" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All villages</SelectItem>
+              {villages.map((v) => <SelectItem key={v.id} value={v.name}>{v.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={crop} onValueChange={setCrop}>
+            <SelectTrigger className="h-12"><SelectValue placeholder="Crop" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All crops</SelectItem>
+              {cropOptions.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+        <ToggleGroup type="single" value={status} onValueChange={(v) => v && setStatus(v as Status)} className="justify-start flex-wrap">
+          <ToggleGroupItem value="all" className="h-10">All</ToggleGroupItem>
+          <ToggleGroupItem value="owes" className="h-10">Owe us</ToggleGroupItem>
+          <ToggleGroupItem value="we_owe" className="h-10">We owe</ToggleGroupItem>
+          <ToggleGroupItem value="settled" className="h-10">Settled</ToggleGroupItem>
+          <ToggleGroupItem value="inactive" className="h-10">Inactive</ToggleGroupItem>
+        </ToggleGroup>
       </div>
 
       {error && (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            Error loading farmers: {error.message}
-          </AlertDescription>
+          <AlertDescription>Could not load farmers: {error.message}</AlertDescription>
         </Alert>
       )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Farmer Directory</CardTitle>
-          <CardDescription>
-            Search by name, phone, code or village.
-          </CardDescription>
-          <div className="relative my-2">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search farmers..."
-              className="pl-10"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="flex items-center justify-center h-32">
-              <div className="text-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-agri-green-500 mx-auto mb-4"></div>
-                <p className="text-muted-foreground">Loading farmers...</p>
-              </div>
-            </div>
-          ) : (
-            <>
-              {/* Desktop Table */}
-              <div className="hidden md:block">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Code</TableHead>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Phone</TableHead>
-                      <TableHead>Village</TableHead>
-                      <TableHead>Crop Type</TableHead>
-                      <TableHead className="w-[100px]">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredFarmers.length > 0 ? (
-                      filteredFarmers.map((farmer) => (
-                        <TableRow key={farmer.id}>
-                          <TableCell className="font-mono text-xs">{farmer.code}</TableCell>
-                          <TableCell className="font-medium">{farmer.name}</TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <span>{farmer.phone}</span>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-6 w-6"
-                                onClick={() => handleCall(farmer.phone)}
-                              >
-                                <Phone className="h-3 w-3" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-6 w-6"
-                                onClick={() => handleWhatsApp(farmer.phone)}
-                              >
-                                <MessageCircle className="h-3 w-3" />
-                              </Button>
-                            </div>
-                          </TableCell>
-                          <TableCell>{farmer.villages?.name || farmer.address || "-"}</TableCell>
-                          <TableCell>{farmer.crop_type || "-"}</TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              {isAdmin && (
-                                <>
-                                  <Button variant="ghost" size="icon" className="h-8 w-8">
-                                    <Edit className="h-4 w-4" />
-                                  </Button>
-                                  <Button 
-                                    variant="ghost" 
-                                    size="icon" 
-                                    className="h-8 w-8 text-red-500"
-                                    onClick={() => handleDeleteFarmer(farmer.id)}
-                                  >
-                                    <Trash className="h-4 w-4" />
-                                  </Button>
-                                </>
-                              )}
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    ) : (
-                      <TableRow>
-                        <TableCell colSpan={6} className="text-center py-6 text-muted-foreground">
-                          No farmers found matching your search.
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
+      {isLoading ? (
+        <p className="py-10 text-center text-muted-foreground">Loading farmers...</p>
+      ) : filtered.length === 0 ? (
+        <Card><CardContent className="py-10 text-center text-muted-foreground">
+          {farmers.length === 0 ? "No farmers yet. Tap Add farmer to start." : "No farmers match these filters."}
+        </CardContent></Card>
+      ) : (
+        <>
+          <p className="text-xs text-muted-foreground">{filtered.length} of {farmers.length} farmers</p>
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {filtered.map((f) => {
+              const o = overview[f.id];
+              return (
+                <Card key={f.id}>
+                  <CardContent className="p-4 space-y-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <Link to={`/farmers/${f.id}`} className="min-w-0 flex-1">
+                        <p className="font-semibold text-lg truncate hover:text-agri-green-700">{f.name}</p>
+                        <p className="text-sm text-muted-foreground truncate">
+                          <span className="font-mono">{f.code}</span>
+                          {f.villages?.name ? ` · ${f.villages.name}` : ""}
+                          {f.crop_type ? ` · ${f.crop_type}` : ""}
+                        </p>
+                      </Link>
+                      <div className="flex gap-1">
+                        {canWrite && (
+                          <Button variant="ghost" size="icon" className="h-10 w-10" onClick={() => openEdit(f)} aria-label="Edit farmer">
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                        )}
+                        {isAdmin && (
+                          <Button variant="ghost" size="icon" className="h-10 w-10 text-red-500" aria-label="Delete farmer"
+                            onClick={() => confirm(`Remove ${f.name}? Their bills and advances stay in the records.`) && deleteFarmer(f.id)}>
+                            <Trash className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
 
-              {/* Mobile Cards */}
-              <div className="md:hidden space-y-4">
-                {filteredFarmers.length > 0 ? (
-                  filteredFarmers.map((farmer) => (
-                    <Card key={farmer.id}>
-                      <CardContent className="p-4">
-                        <div className="flex justify-between items-start mb-2">
-                          <h3 className="font-medium">{farmer.name}</h3>
-                          <span className="font-mono text-xs text-muted-foreground">{farmer.code}</span>
-                        </div>
-                        <div className="space-y-2 text-sm text-muted-foreground">
-                          <div className="flex items-center gap-2">
-                            <span>{farmer.phone}</span>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleCall(farmer.phone)}
-                            >
-                              <Phone className="h-3 w-3 mr-1" />
-                              Call
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleWhatsApp(farmer.phone)}
-                            >
-                              <MessageCircle className="h-3 w-3 mr-1" />
-                              WhatsApp
-                            </Button>
-                          </div>
-                          {(farmer.villages?.name || farmer.address) && <p>📍 {farmer.villages?.name || farmer.address}</p>}
-                          {farmer.crop_type && <p>🌾 {farmer.crop_type}</p>}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))
-                ) : (
-                  <div className="text-center py-6 text-muted-foreground">
-                    No farmers found matching your search.
-                  </div>
-                )}
-              </div>
-            </>
-          )}
-        </CardContent>
-      </Card>
+                    <div className="flex flex-wrap gap-2">
+                      {!f.is_active && <Badge variant="secondary">Inactive</Badge>}
+                      {(o?.open_advance ?? 0) > 0 && <Badge className="bg-red-100 text-red-700 hover:bg-red-100">Owes us {formatINR(o.open_advance)}</Badge>}
+                      {(o?.bills_due ?? 0) > 0 && <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100">We owe {formatINR(o.bills_due)}</Badge>}
+                      {o && o.open_advance <= 0 && o.bills_due <= 0 && o.bill_count > 0 && <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Settled</Badge>}
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button asChild variant="outline" className="h-12">
+                        <a href={telHref(f.phone)}><Phone className="h-4 w-4 mr-2" /> Call</a>
+                      </Button>
+                      <Button asChild variant="outline" className="h-12 text-green-700">
+                        <a href={whatsappHref(f.phone)} target="_blank" rel="noreferrer"><MessageCircle className="h-4 w-4 mr-2" /> WhatsApp</a>
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        </>
+      )}
+
+      <FarmerFormDialog open={formOpen} onOpenChange={setFormOpen} farmer={editing} />
     </div>
   );
 };

@@ -1,9 +1,9 @@
 import { NavLink } from 'react-router-dom';
-import { Home, Layers, Receipt, Users, Wallet } from 'lucide-react';
+import { FilePlus, Home, Layers, Receipt, Users, Wallet } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
 
-const items = [
+const baseItems = [
   { title: 'Home', url: '/', icon: Home },
-  { title: 'Lots', url: '/lots', icon: Layers },
   { title: 'Farmers', url: '/farmers', icon: Users },
   { title: 'Advances', url: '/advances', icon: Wallet },
   { title: 'Bills', url: '/bills', icon: Receipt },
@@ -11,6 +11,8 @@ const items = [
 
 /** Thumb-reach navigation for phones; hidden on desktop and when printing. */
 export function BottomNav() {
+  const { canWrite } = useAuth();
+  const items = [...baseItems.slice(0, 2), canWrite ? { title: 'New bill', url: '/bills/new', icon: FilePlus } : { title: 'Lots', url: '/lots', icon: Layers }, ...baseItems.slice(2)];
   return (
     <nav className="md:hidden print-hidden fixed bottom-0 inset-x-0 z-40 border-t bg-white grid grid-cols-5">
       {items.map(({ title, url, icon: Icon }) => (

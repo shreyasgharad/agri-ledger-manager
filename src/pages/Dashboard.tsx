@@ -5,11 +5,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import StatsCard from '@/components/dashboard/StatsCard';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { useBrokerStats, useLots } from '@/hooks/useAgri';
+import { useAuth } from '@/hooks/useAuth';
 import { formatDate, formatINR, formatKg } from '@/lib/format';
 
 const Dashboard = () => {
   const { data: stats, isLoading } = useBrokerStats();
   const { lots } = useLots();
+  const { isAdmin, canWrite } = useAuth();
   const recent = lots.slice(0, 8);
 
   return (
@@ -21,9 +23,11 @@ const Dashboard = () => {
             {new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
           </p>
         </div>
-        <Button asChild className="h-12 bg-agri-green-500 hover:bg-agri-green-600">
-          <Link to="/lots"><Plus className="h-4 w-4 mr-2" /> New lot</Link>
-        </Button>
+        {canWrite && (
+          <Button asChild className="h-12 bg-agri-green-500 hover:bg-agri-green-600">
+            <Link to="/bills/new"><Plus className="h-4 w-4 mr-2" /> Create bill</Link>
+          </Button>
+        )}
       </div>
 
       {isLoading ? (
@@ -32,8 +36,8 @@ const Dashboard = () => {
         <div className="grid gap-4 grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
           <StatsCard title="Lots today" value={stats?.lotsToday ?? 0} description={`${stats?.bagsToday ?? 0} bags`} icon={Layers} />
           <StatsCard title="Quintals today" value={(stats?.quintalToday ?? 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })} description="weighed" icon={Scale} />
-          <StatsCard title="Commission today" value={formatINR(stats?.commissionToday)} description="from issued bills" icon={Percent} iconColor="text-agri-green-600" />
-          <StatsCard title="Commission this month" value={formatINR(stats?.commissionMonth)} description="farmer + buyer" icon={Receipt} iconColor="text-blue-500" />
+          {isAdmin && <StatsCard title="Commission today" value={formatINR(stats?.commissionToday)} description="from issued bills" icon={Percent} iconColor="text-agri-green-600" />}
+          {isAdmin && <StatsCard title="Commission this month" value={formatINR(stats?.commissionMonth)} description="farmer + buyer" icon={Receipt} iconColor="text-blue-500" />}
           <StatsCard title="Open advances" value={formatINR(stats?.pendingAdvances)} description="not yet deducted" icon={Wallet} iconColor="text-red-500" />
           <StatsCard title="Farmers" value={stats?.totalFarmers ?? 0} description={`Owed to farmers ${formatINR(stats?.payableToFarmers)}`} icon={Users} />
         </div>
@@ -43,7 +47,7 @@ const Dashboard = () => {
         <CardHeader><CardTitle>Recent lots</CardTitle></CardHeader>
         <CardContent>
           {recent.length === 0 ? (
-            <p className="text-center text-muted-foreground py-4">No lots yet. Start by adding farmers and buyers, then tap "New lot".</p>
+            <p className="text-center text-muted-foreground py-4">No lots yet. Tap "Create bill" to start.</p>
           ) : (
             <div className="divide-y">
               {recent.map((l) => (

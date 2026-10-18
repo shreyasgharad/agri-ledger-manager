@@ -3,7 +3,7 @@ import { db } from "@/integrations/supabase/untyped";
 import { useToast } from "@/hooks/use-toast";
 import { DEFAULT_ORG_ID } from "@/lib/org";
 import type {
-  Advance, AdvanceType, BagType, Balance, Bid, Bill, BusinessSettings, Buyer, Crop,
+  Advance, AdvanceType, BagType, Balance, FarmerOverview, FarmerPnl, UserProfile, AppRole, Bid, Bill, BusinessSettings, Buyer, Crop,
   Lot, LotBag, LotTotals, Payment, PaymentMethod, Sale, Village,
 } from "@/types/agri";
 
@@ -67,7 +67,7 @@ export const useBuyers = () => {
       unwrap(await db.from("buyers").insert([{ ...b, org_id: DEFAULT_ORG_ID }]).select().single()),
     "Buyer added"
   );
-  return { buyers: query.data ?? [], isLoading: query.isLoading, balances: balances.data ?? {}, addBuyer: addBuyer.mutate, isAdding: addBuyer.isPending };
+  return { buyers: query.data ?? [], isLoading: query.isLoading, balances: balances.data ?? {}, addBuyer: addBuyer.mutate, addBuyerAsync: addBuyer.mutateAsync, isAdding: addBuyer.isPending };
 };
 
 // ------------------------------------------------------------------- lots
@@ -156,22 +156,69 @@ export const useLot = (lotId: string | undefined) => {
 };
 
 // --------------------------------------------------------------- advances
+export interface NewAdvance {
+  farmer_id: string;
+  type: AdvanceType;
+  amount: number;
+  reason?: string;
+  advance_date?: string;
+  due_date?: string | null;
+  bag_type_id?: string | null;
+  qty?: number | null;
+}
+
 export const useAdvances = () => {
   const query = useQuery({
     queryKey: ["advances"],
     queryFn: async () =>
       unwrap(
-        await db.from("advances").select("*, farmers(name, code)").is("deleted_at", null)
-          .order("advance_date", { ascending: false }).order("created_at", { ascending: false }).limit(300)
+        await db.from("advances").select("*, farmers(name, code), bag_types(name)").is("deleted_at", null)
+          .order("advance_date", { ascending: false }).order("created_at", { ascending: false }).limit(1000)
       ) as Advance[],
   });
   const addAdvance = useAgriMutation(
-    async (v: { farmer_id: string; type: AdvanceType; amount: number; reason?: string; advance_date?: string }) =>
+    async (v: NewAdvance) =>
       unwrap(await db.from("advances").insert([{ ...v, org_id: DEFAULT_ORG_ID }]).select().single()),
     "Advance recorded"
   );
-  return { advances: query.data ?? [], isLoading: query.isLoading, addAdvance: addAdvance.mutate, isAdding: addAdvance.isPending };
+  const markRepaid = useAgriMutation(
+    async (v: { id: string; method: PaymentMethod }) =>
+      unwrap(await db.rpc("mark_advance_repaid", { p_advance_id: v.id, p_method: v.method })),
+    "Marked as repaid"
+  );
+  const updateAdvance = useAgriMutation(
+    async (v: { id: string; amount: number; reason?: string | null; due_date?: string | null }) => {
+      const { id, ...rest } = v;
+      return unwrap(await db.from("advances").update(rest).eq("id", id).select().single());
+    },
+    "Advance updated"
+  );
+  const removeAdvance = useAgriMutation(
+    async (id: string) => unwrap(await db.from("advances").update({ deleted_at: new Date().toISOString() }).eq("id", id)),
+    "Advance removed"
+  );
+  return {
+    advances: query.data ?? [],
+    isLoading: query.isLoading,
+    addAdvance: addAdvance.mutate,
+    isAdding: addAdvance.isPending,
+    markRepaid: markRepaid.mutate,
+    updateAdvance: updateAdvance.mutate,
+    removeAdvance: removeAdvance.mutate,
+  };
 };
+
+/** Open (unsettled) advances for one farmer, oldest first. */
+export const useOpenAdvances = (farmerId: string | undefined) =>
+  useQuery({
+    queryKey: ["open-advances", farmerId],
+    enabled: !!farmerId,
+    queryFn: async () =>
+      unwrap(
+        await db.from("advances").select("*, bag_types(name)").eq("farmer_id", farmerId)
+          .is("settled_bill_id", null).is("repaid_at", null).is("deleted_at", null).order("advance_date")
+      ) as Advance[],
+  });
 
 // ------------------------------------------------------------------ bills
 export const useBills = () =>
@@ -259,4 +306,107 @@ export const useSettings = () => {
     if (error) throw new Error(error.message);
   }, "Settings saved");
   return { settings: query.data, isLoading: query.isLoading, save: save.mutate, isSaving: save.isPending };
+};
+
+// ------------------------------------------------------------ farmer ledger
+export const useFarmerOverview = () =>
+  useQuery({
+    queryKey: ["farmer-overview"],
+    queryFn: async () => {
+      const rows = unwrap(await db.from("farmer_overview").select("*")) as FarmerOverview[];
+      return Object.fromEntries(
+        rows.map((r) => [r.farmer_id, { ...r, open_advance: num(r.open_advance), bills_due: num(r.bills_due) }])
+      ) as Record<string, FarmerOverview>;
+    },
+  });
+
+export const useFarmerLedger = (farmerId: string | undefined) =>
+  useQuery({
+    queryKey: ["farmer-ledger", farmerId],
+    enabled: !!farmerId,
+    queryFn: async () => {
+      const farmer = unwrap(await db.from("farmers").select("*, villages(name)").eq("id", farmerId).single());
+      const lots = unwrap(
+        await db.from("lots").select("*, crops(name)").eq("farmer_id", farmerId).is("deleted_at", null).neq("status", "cancelled")
+          .order("lot_date", { ascending: false })
+      ) as Lot[];
+      const totals = unwrap(await db.from("lot_totals").select("*").in("lot_id", lots.length ? lots.map((l) => l.id) : ["00000000-0000-0000-0000-000000000000"])) as LotTotals[];
+      const advances = unwrap(
+        await db.from("advances").select("*, bag_types(name)").eq("farmer_id", farmerId).is("deleted_at", null)
+          .order("advance_date", { ascending: false })
+      ) as Advance[];
+      const bills = unwrap(
+        await db.from("bills").select("*, buyers(name, firm_name)").eq("farmer_id", farmerId).eq("party_type", "farmer")
+          .is("deleted_at", null).order("issued_at", { ascending: false })
+      ) as Bill[];
+      const payments = bills.length
+        ? (unwrap(await db.from("payments").select("*").in("bill_id", bills.map((b) => b.id)).is("deleted_at", null).order("paid_at", { ascending: false })) as Payment[])
+        : [];
+      const byLot = new Map(totals.map((t) => [t.lot_id, t]));
+      return {
+        farmer: farmer as { id: string; code: string | null; name: string; phone: string; crop_type: string | null; village_id: string | null; is_active: boolean; villages?: { name: string } | null },
+        lots: lots.map((l) => ({ ...l, bag_count: num(byLot.get(l.id)?.bag_count), total_kg: num(byLot.get(l.id)?.total_kg) })),
+        advances,
+        bills,
+        payments,
+      };
+    },
+  });
+
+export const useFarmerPnl = (farmerId: string | undefined, enabled: boolean) =>
+  useQuery({
+    queryKey: ["farmer-pnl", farmerId],
+    enabled: !!farmerId && enabled,
+    retry: false,
+    queryFn: async () => {
+      const rows = unwrap(await db.rpc("farmer_pnl", { p_farmer_id: farmerId })) as FarmerPnl[];
+      const r = rows[0];
+      return Object.fromEntries(Object.entries(r).map(([k, v]) => [k, num(v)])) as unknown as FarmerPnl;
+    },
+  });
+
+// --------------------------------------------------------- one-step billing
+export const useQuickBill = () => {
+  const run = useAgriMutation(
+    async (v: {
+      farmer_id: string; crop_id: string; buyer_id: string; bags: number; total_kg: number; rate: number;
+      farmer_pct: number; buyer_pct: number; advance_ids: string[]; bag_type_id: string | null;
+    }) => {
+      const rows = unwrap(
+        await db.rpc("quick_bill", {
+          p_farmer_id: v.farmer_id, p_crop_id: v.crop_id, p_buyer_id: v.buyer_id,
+          p_bags: v.bags, p_total_kg: v.total_kg, p_rate: v.rate,
+          p_farmer_pct: v.farmer_pct, p_buyer_pct: v.buyer_pct,
+          p_advance_ids: v.advance_ids, p_bag_type_id: v.bag_type_id,
+        })
+      ) as { out_lot_id: string; out_farmer_bill: string; out_buyer_bill: string }[];
+      return rows[0];
+    },
+    "Bills created"
+  );
+  return { quickBill: run.mutateAsync, isBilling: run.isPending };
+};
+
+// ----------------------------------------------------- bag prices and users
+export const useBagPrices = () => {
+  const bagTypes = useBagTypes();
+  const save = useAgriMutation(
+    async (v: { id: string; price: number }) => unwrap(await db.from("bag_types").update({ price: v.price }).eq("id", v.id)),
+    "Bag price saved"
+  );
+  return { bagTypes: bagTypes.data ?? [], save: save.mutate };
+};
+
+export const useProfiles = (enabled: boolean) => {
+  const query = useQuery({
+    queryKey: ["profiles"],
+    enabled,
+    queryFn: async () =>
+      unwrap(await db.from("profiles").select("user_id, role, email, full_name, created_at").order("created_at")) as UserProfile[],
+  });
+  const setRole = useAgriMutation(
+    async (v: { user_id: string; role: AppRole }) => unwrap(await db.from("profiles").update({ role: v.role }).eq("user_id", v.user_id)),
+    "Access updated"
+  );
+  return { profiles: query.data ?? [], isLoading: query.isLoading, setRole: setRole.mutate };
 };
